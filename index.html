@@ -2,9 +2,9 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Mesa RPG</title>
+<title>Mesas Online</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
 body {
@@ -14,7 +14,6 @@ body {
   color:white;
 }
 
-/* TELAS */
 .tela {
   display:none;
   height:100vh;
@@ -24,7 +23,6 @@ body {
 }
 .ativa { display:flex; }
 
-/* LOGIN */
 .login-box {
   background:#020617;
   padding:30px;
@@ -32,15 +30,25 @@ body {
   text-align:center;
 }
 
+/* LOGO */
+.logo {
+  width:120px;
+  margin-bottom:10px;
+}
+
+.titulo {
+  font-size:24px;
+  margin-bottom:20px;
+}
+
 input {
   padding:10px;
   margin:5px;
   border:none;
   border-radius:6px;
-  width:200px;
+  width:220px;
 }
 
-/* BOTÕES */
 button {
   padding:10px;
   margin:5px;
@@ -51,7 +59,6 @@ button {
   cursor:pointer;
 }
 
-/* JOGO */
 .container {
   display:grid;
   grid-template-columns:250px 1fr 250px;
@@ -88,7 +95,9 @@ button {
 <!-- LOGIN -->
 <div id="loginTela" class="tela ativa">
   <div class="login-box">
-    <h2>🎲 Mesa RPG</h2>
+
+    <img src="logo.png" class="logo">
+    <div class="titulo">Mesas Online</div>
 
     <input id="email" placeholder="Email">
     <input id="senha" type="password" placeholder="Senha">
@@ -102,7 +111,7 @@ button {
 
 <!-- LOBBY -->
 <div id="lobbyTela" class="tela">
-  <h2>Bem-vindo</h2>
+  <h2>Mesas Online</h2>
   <div id="user"></div>
 
   <input id="sala" placeholder="Nome da sala">
@@ -131,7 +140,9 @@ button {
 </div>
 
 <script>
-const supabase = supabase.createClient(
+const { createClient } = window.supabase;
+
+const client = createClient(
   "https://nbgnxxqmpuzucmctxejk.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
 );
@@ -139,35 +150,26 @@ const supabase = supabase.createClient(
 let user = null;
 let sala = null;
 
-// trocar tela
 function mostrar(id){
   document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"));
   document.getElementById(id).classList.add("ativa");
 }
 
-// registrar
 async function registrar(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password: senha
-  });
+  const { error } = await client.auth.signUp({ email, password: senha });
 
   document.getElementById("msg").innerText =
-    error ? error.message : "Conta criada! Verifique o email.";
+    error ? error.message : "Conta criada!";
 }
 
-// login
 async function login(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password: senha
-  });
+  const { data, error } = await client.auth.signInWithPassword({ email, password: senha });
 
   if(error){
     document.getElementById("msg").innerText = error.message;
@@ -178,9 +180,8 @@ async function login(){
   }
 }
 
-// verificar login
 async function verificar(){
-  const { data } = await supabase.auth.getUser();
+  const { data } = await client.auth.getUser();
   user = data.user;
 
   if(user){
@@ -189,7 +190,6 @@ async function verificar(){
   }
 }
 
-// entrar sala
 async function entrarSala(){
   sala = document.getElementById("sala").value;
   if(!sala) return alert("Digite a sala");
@@ -198,20 +198,18 @@ async function entrarSala(){
   carregar();
 }
 
-// rolar dado
 async function rolar(){
   let valor = Math.floor(Math.random()*20)+1;
 
-  await supabase.from("dados").insert({
+  await client.from("dados").insert({
     sala,
     usuario:user.email,
     valor
   });
 }
 
-// criar token
 document.getElementById("mapa").onclick = async e=>{
-  await supabase.from("tokens").insert({
+  await client.from("tokens").insert({
     sala,
     nome:document.getElementById("nome").value || "P",
     cor:document.getElementById("cor").value || "red",
@@ -220,21 +218,19 @@ document.getElementById("mapa").onclick = async e=>{
   });
 };
 
-// realtime
 function carregar(){
-  supabase.channel("rt")
+  client.channel("rt")
     .on('postgres_changes',{event:'*',schema:'public'},()=> atualizar())
     .subscribe();
 
   atualizar();
 }
 
-// atualizar
 async function atualizar(){
   const mapa = document.getElementById("mapa");
   mapa.innerHTML="";
 
-  const {data:tokens} = await supabase.from("tokens").select("*").eq("sala",sala);
+  const {data:tokens} = await client.from("tokens").select("*").eq("sala",sala);
 
   tokens.forEach(t=>{
     const el = document.createElement("div");
@@ -245,32 +241,13 @@ async function atualizar(){
     el.innerText=t.nome[0];
 
     mapa.appendChild(el);
-
-    let offX, offY;
-
-    el.onmousedown=(ev)=>{
-      offX=ev.offsetX;
-      offY=ev.offsetY;
-
-      document.onmousemove=async e=>{
-        let x=e.pageX-mapa.offsetLeft-offX;
-        let y=e.pageY-mapa.offsetTop-offY;
-
-        el.style.left=x+"px";
-        el.style.top=y+"px";
-
-        await supabase.from("tokens").update({x,y}).eq("id",t.id);
-      };
-
-      document.onmouseup=()=> document.onmousemove=null;
-    };
   });
 
-  const {data:dados} = await supabase.from("dados")
+  const {data:dados} = await client.from("dados")
     .select("*").eq("sala",sala)
     .order("id",{ascending:false}).limit(1);
 
-  if(dados[0]){
+  if(dados && dados[0]){
     document.getElementById("resultado").innerText =
       `${dados[0].usuario}: ${dados[0].valor}`;
   }
