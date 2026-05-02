@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Mesa RPG</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+body {
+  margin:0;
+  font-family:Segoe UI;
+  background:#0f172a;
+  color:white;
+}
+
+/* TELAS */
+.tela {
+  display:none;
+  height:100vh;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+.ativa { display:flex; }
+
+/* LOGIN */
+.login-box {
+  background:#020617;
+  padding:30px;
+  border-radius:10px;
+  text-align:center;
+}
+
+/* BOTÕES */
+button {
+  padding:10px;
+  margin:5px;
+  border:none;
+  background:#6366f1;
+  color:white;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+/* LOBBY */
+.lobby input {
+  padding:10px;
+  margin:5px;
+}
+
+/* JOGO */
+.container {
+  display:grid;
+  grid-template-columns:250px 1fr 250px;
+  height:100vh;
+}
+
+.sidebar, .right {
+  background:#020617;
+  padding:10px;
+}
+
+.mapa {
+  position:relative;
+  background:#111;
+}
+
+.token {
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  position:absolute;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  border:2px solid black;
+  cursor:grab;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginTela" class="tela ativa">
+  <div class="login-box">
+    <h2>🎲 Mesa RPG</h2>
+    <button onclick="login()">Entrar com Google</button>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobbyTela" class="tela lobby">
+  <h2>Bem-vindo</h2>
+  <div id="user"></div>
+
+  <input id="sala" placeholder="Nome da sala">
+  <button onclick="entrar()">Entrar na sala</button>
+</div>
+
+<!-- JOGO -->
+<div id="jogoTela" class="tela">
+
+<div class="container">
+
+<div class="sidebar">
+  <h3>Menu</h3>
+  <input id="nome" placeholder="Personagem">
+  <input id="cor" placeholder="Cor">
+</div>
+
+<div id="mapa" class="mapa"></div>
+
+<div class="right">
+  <h3>🎲 Dados</h3>
+  <button onclick="rolar()">Rolar D20</button>
+  <div id="resultado"></div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+const supabase = supabase.createClient(
+  "https://nbgnxxqmpuzucmctxejk.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
+);
+
+let user=null, sala=null, isMestre=false;
+
+// TROCAR TELA
+function mostrar(id){
+  document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"));
+  document.getElementById(id).classList.add("ativa");
+}
+
+// LOGIN
+async function login(){
+  await supabase.auth.signInWithOAuth({ provider:'google' });
+}
+
+// DETECTAR LOGIN
+async function verificarLogin(){
+  const { data } = await supabase.auth.getUser();
+  user = data.user;
+
+  if(user){
+    document.getElementById("user").innerText=user.email;
+    mostrar("lobbyTela");
+  } else {
+    mostrar("loginTela");
+  }
+}
+
+// ENTRAR SALA
+async function entrar(){
+  if(!user){
+    alert("Faça login primeiro!");
+    return;
+  }
+
+  sala=document.getElementById("sala").value;
+
+  if(!sala){
+    alert("Digite o nome da sala");
+    return;
+  }
+
+  const {data, error} = await supabase
+    .from("salas")
+    .select("*")
+    .eq("nome",sala)
+    .maybeSingle();
+
+  if(error){
+    alert("Erro no banco");
+    console.error(error);
+    return;
+  }
+
+  if(!data){
+    await supabase.from("salas").insert({
+      nome:sala,
+      mestre:user.id
+    });
+    isMestre=true;
+  } else {
+    isMestre=data.mestre===user.id;
+  }
+
+  mostrar("jogoTela");
+  carregar();
+}
+
+// DADO
+async function rolar(){
+  let valor=Math.floor(Math.random()*20)+1;
+
+  await supabase.from("dados").insert({
+    sala,
+    usuario:user.email,
+    valor
+  });
+}
+
+// TOKEN
+document.getElementById("mapa").onclick=async e=>{
+  await supabase.from("tokens").insert({
+    sala,
+    nome:document.getElementById("nome").value||"P",
+    cor:document.getElementById("cor").value||"red",
+    x:e.offsetX,
+    y:e.offsetY
+  });
+};
+
+// REALTIME
+function carregar(){
+  supabase.channel("rt")
+  .on('postgres_changes',{event:'*',schema:'public'},()=> atualizar())
+  .subscribe();
+
+  atualizar();
+}
+
+async function atualizar(){
+  const mapa=document.getElementById("mapa");
+  mapa.innerHTML="";
+
+  const {data:tokens}=await supabase.from("tokens").select("*").eq("sala",sala);
+
+  tokens.forEach(t=>{
+    const el=document.createElement("div");
+    el.className="token";
+    el.style.left=t.x+"px";
+    el.style.top=t.y+"px";
+    el.style.background=t.cor;
+    el.innerText=t.nome[0];
+
+    mapa.appendChild(el);
+
+    let offX, offY;
+
+    el.onmousedown=(ev)=>{
+      offX=ev.offsetX;
+      offY=ev.offsetY;
+
+      document.onmousemove=async e=>{
+        let x=e.pageX-mapa.offsetLeft-offX;
+        let y=e.pageY-mapa.offsetTop-offY;
+
+        el.style.left=x+"px";
+        el.style.top=y+"px";
+
+        await supabase.from("tokens").update({x,y}).eq("id",t.id);
+      };
+
+      document.onmouseup=()=> document.onmousemove=null;
+    };
+  });
+
+  const {data:dados}=await supabase.from("dados")
+    .select("*").eq("sala",sala)
+    .order("id",{ascending:false}).limit(1);
+
+  if(dados[0]){
+    document.getElementById("resultado").innerText=
+      `${dados[0].usuario}: ${dados[0].valor}`;
+  }
+}
+
+// INICIAR
+verificarLogin();
+</script>
+
+</body>
+</html>
