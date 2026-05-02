@@ -7,61 +7,127 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;background:#0f172a;color:white;font-family:Segoe UI}
-.tela{display:none;height:100vh;justify-content:center;align-items:center;flex-direction:column}
+body{
+margin:0;
+background:#0b0f1a;
+color:white;
+font-family:Segoe UI;
+overflow:hidden;
+}
+
+.tela{
+display:none;
+height:100vh;
+justify-content:center;
+align-items:center;
+flex-direction:column
+}
+
 .ativa{display:flex}
 
-.container{display:grid;grid-template-columns:250px 1fr;height:100vh}
-.sidebar{background:#020617;padding:10px;overflow:auto}
-.mesa{display:flex;justify-content:center;align-items:center}
+/* 🔥 INTERFACE NOVA */
+#mesaTela{
+display:block;
+}
+
+/* LAYOUT */
+.container{
+display:grid;
+grid-template-columns:260px 1fr;
+height:100vh;
+}
+
+/* SIDEBAR ESTILO RPG */
+.sidebar{
+background:#111827;
+padding:15px;
+display:flex;
+flex-direction:column;
+gap:10px;
+border-right:2px solid #1f2937;
+}
+
+.sidebar h3{
+margin:5px 0;
+font-size:14px;
+color:#9ca3af;
+}
+
+.sidebar button{
+background:#1f2937;
+border:none;
+padding:10px;
+color:white;
+border-radius:6px;
+cursor:pointer;
+transition:0.2s;
+}
+
+.sidebar button:hover{
+background:#374151;
+}
+
+/* MESA */
+.mesa{
+position:relative;
+background:#020617;
+overflow:hidden;
+}
 
 /* MAPA */
 .mapa-box{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
 width:90%;
 height:90%;
-background:#222;
-position:relative;
+background:#111;
+border:2px solid #1f2937;
 border-radius:10px;
-display:flex;
-justify-content:center;
-align-items:center;
+overflow:hidden;
 }
 
 #mapaImg{
-max-width:100%;
-max-height:100%;
-position:absolute;
+width:100%;
+height:100%;
+object-fit:contain;
 }
 
 /* BOTÃO MESTRE */
 .overlay{
 position:absolute;
-background:rgba(0,0,0,0.7);
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+background:rgba(0,0,0,0.8);
 padding:20px;
 border-radius:10px;
 text-align:center;
-cursor:pointer;
 }
 
 /* TOKEN */
 .token{
-width:40px;height:40px;border-radius:50%;
+width:40px;
+height:40px;
+border-radius:50%;
 position:absolute;
 display:flex;
 align-items:center;
 justify-content:center;
 font-weight:bold;
 cursor:grab;
+border:2px solid black;
 }
 
-/* POPUP */
+/* POPUP DADO */
 .popup{
-position:fixed;
-top:20px;
+position:absolute;
+bottom:20px;
 left:50%;
 transform:translateX(-50%);
 background:black;
-padding:20px;
+padding:15px 25px;
 border-radius:10px;
 font-size:22px;
 display:none;
@@ -105,6 +171,7 @@ display:none;
 <div id="mesaTela" class="tela">
 <div class="container">
 
+<!-- SIDEBAR -->
 <div class="sidebar">
 
 <h3>🎲 Dados</h3>
@@ -126,6 +193,7 @@ display:none;
 
 </div>
 
+<!-- MESA -->
 <div class="mesa">
 <div id="mapaBox" class="mapa-box">
 
@@ -162,7 +230,7 @@ document.getElementById(id).classList.add("ativa");
 
 // AUTH
 async function registrar(){
-const {data,error}=await client.auth.signUp({
+const {error}=await client.auth.signUp({
 email:email.value,password:senha.value
 });
 if(error)return msg(error.message);
@@ -185,11 +253,7 @@ async function criarSala(){
 sala=nomeSala.value;
 isMestre=true;
 
-await client.from("salas").insert({
-nome:sala,
-mestre:nick
-});
-
+await client.from("salas").insert({nome:sala,mestre:nick});
 abrirMesa();
 }
 
@@ -202,7 +266,6 @@ const {data}=await client.from("salas")
 if(!data)return alert("Sala não existe");
 
 isMestre=data.mestre===nick;
-
 abrirMesa();
 }
 
@@ -213,20 +276,19 @@ mostrar("mesaTela");
 if(!isMestre){
 document.getElementById("botaoMapa").style.display="none";
 }else{
-document.getElementById("areaMestre").innerHTML = `
+areaMestre.innerHTML=`
 <h3>👑 Mestre</h3>
-<input id="nomeToken" placeholder="Nome do jogador">
-<input id="corToken" placeholder="Cor (ex: red)">
+<input id="nomeToken" placeholder="Nome jogador">
+<input id="corToken" placeholder="Cor">
 <button onclick="criarToken()">Criar Token</button>
 `;
 }
 
-document.getElementById("mapaUpload").onchange=uploadMapa;
-
+mapaUpload.onchange=uploadMapa;
 atualizar();
 }
 
-// UPLOAD MAPA
+// MAPA
 async function uploadMapa(e){
 const file=e.target.files[0];
 
@@ -243,17 +305,12 @@ sala,nome:file.name,url:data.publicUrl,tipo:"mapa"
 
 // TOKEN
 async function criarToken(){
-const nome = document.getElementById("nomeToken").value;
-const cor = document.getElementById("corToken").value || "red";
-
-if(!nome) return alert("Digite o nome");
-
 await client.from("tokens").insert({
-sala: sala,
-dono: nome,
-x: 100,
-y: 100,
-cor: cor
+sala,
+dono:nomeToken.value,
+x:100,
+y:100,
+cor:corToken.value||"red"
 });
 }
 
@@ -270,10 +327,9 @@ sala,valor,tipo:"D"+max
 
 // POPUP
 function popup(txt){
-const p=document.getElementById("popup");
-p.innerText=txt;
-p.style.display="block";
-setTimeout(()=>p.style.display="none",10000);
+popupEl.innerText=txt;
+popupEl.style.display="block";
+setTimeout(()=>popupEl.style.display="none",10000);
 }
 
 // LOOP
@@ -284,43 +340,38 @@ setInterval(async()=>{
 const {data:arq}=await client.from("arquivos")
 .select("*").eq("sala",sala).eq("tipo","mapa");
 
-if(arq[0]){
-document.getElementById("mapaImg").src=arq[0].url;
-}
+if(arq[0]) mapaImg.src=arq[0].url;
 
 // TOKENS
-const {data:tok} = await client.from("tokens")
+const {data:tok}=await client.from("tokens")
 .select("*").eq("sala",sala);
 
 document.querySelectorAll(".token").forEach(t=>t.remove());
 
 tok.forEach(t=>{
-const el = document.createElement("div");
+const el=document.createElement("div");
 el.className="token";
-el.style.left = t.x + "px";
-el.style.top = t.y + "px";
-el.style.background = t.cor;
-el.innerText = t.dono[0];
+el.style.left=t.x+"px";
+el.style.top=t.y+"px";
+el.style.background=t.cor;
+el.innerText=t.dono[0];
 
 mapaBox.appendChild(el);
 
-if(t.dono === nick){
-el.onmousedown = ()=>{
-document.onmousemove = async e=>{
-let x = e.pageX - mapaBox.offsetLeft;
-let y = e.pageY - mapaBox.offsetTop;
+if(t.dono===nick){
+el.onmousedown=()=>{
+document.onmousemove=async e=>{
+let x=e.pageX-mapaBox.offsetLeft;
+let y=e.pageY-mapaBox.offsetTop;
 
-el.style.left = x+"px";
-el.style.top = y+"px";
+el.style.left=x+"px";
+el.style.top=y+"px";
 
-await client.from("tokens")
-.update({x,y})
-.eq("id",t.id);
+await client.from("tokens").update({x,y}).eq("id",t.id);
 };
-document.onmouseup = ()=>document.onmousemove=null;
+document.onmouseup=()=>document.onmousemove=null;
 };
 }
-
 });
 
 // DADOS
@@ -333,6 +384,7 @@ if(d[0]) popup(d[0].tipo+" → "+d[0].valor);
 },1500);
 }
 
+const popupEl=document.getElementById("popup");
 const msg=t=>document.getElementById("msg").innerText=t;
 </script>
 
