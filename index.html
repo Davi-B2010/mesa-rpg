@@ -7,83 +7,11 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
-body {
-  margin:0;
-  font-family:Segoe UI;
-  background:#0f172a;
-  color:white;
-}
-
-.tela {
-  display:none;
-  height:100vh;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-}
-.ativa { display:flex; }
-
-.login-box {
-  background:#020617;
-  padding:30px;
-  border-radius:10px;
-  text-align:center;
-}
-
-.logo {
-  width:120px;
-}
-
-.titulo {
-  font-size:24px;
-  margin-bottom:15px;
-}
-
-input {
-  padding:10px;
-  margin:5px;
-  border:none;
-  border-radius:6px;
-  width:220px;
-}
-
-button {
-  padding:10px;
-  margin:5px;
-  border:none;
-  background:#6366f1;
-  color:white;
-  border-radius:6px;
-  cursor:pointer;
-}
-
-.container {
-  display:grid;
-  grid-template-columns:250px 1fr 250px;
-  height:100vh;
-}
-
-.sidebar, .right {
-  background:#020617;
-  padding:10px;
-}
-
-.mapa {
-  position:relative;
-  background:#111;
-}
-
-.token {
-  width:40px;
-  height:40px;
-  border-radius:50%;
-  position:absolute;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  border:2px solid black;
-}
+body{margin:0;font-family:Segoe UI;background:#0f172a;color:white}
+.tela{display:none;height:100vh;justify-content:center;align-items:center;flex-direction:column}
+.ativa{display:flex}
+input,button{padding:10px;margin:5px;border-radius:6px;border:none}
+button{background:#6366f1;color:white;cursor:pointer}
 </style>
 </head>
 
@@ -91,192 +19,202 @@ button {
 
 <!-- LOGIN -->
 <div id="loginTela" class="tela ativa">
-  <div class="login-box">
-
-    <img src="Logo.png" class="logo">
-    <div class="titulo">Mesas Online</div>
-
-    <input id="nickname" placeholder="Nickname">
-    <input id="email" placeholder="Email">
-    <input id="senha" type="password" placeholder="Senha">
-
-    <button onclick="registrar()">Criar Conta</button>
-    <button onclick="login()">Entrar</button>
-
-    <div id="msg"></div>
-  </div>
+<h2>Mesas Online</h2>
+<input id="nickname" placeholder="Nickname">
+<input id="email" placeholder="Email">
+<input id="senha" type="password" placeholder="Senha">
+<button onclick="registrar()">Criar Conta</button>
+<button onclick="login()">Entrar</button>
+<div id="msg"></div>
 </div>
 
-<!-- LOBBY -->
-<div id="lobbyTela" class="tela">
-  <h2 id="bemvindo"></h2>
-
-  <input id="sala" placeholder="Nome da sala">
-  <button onclick="entrarSala()">Entrar na sala</button>
+<!-- MENU -->
+<div id="menuTela" class="tela">
+<h2>Menu</h2>
+<button onclick="mostrar('criarSalaTela')">Criar Sala</button>
+<button onclick="mostrar('entrarSalaTela')">Entrar em Sala</button>
 </div>
 
-<!-- JOGO -->
-<div id="jogoTela" class="tela">
-<div class="container">
-
-<div class="sidebar">
-  <h3>Personagem</h3>
-  <input id="nome" placeholder="Nome">
-  <input id="cor" placeholder="Cor">
+<!-- CRIAR -->
+<div id="criarSalaTela" class="tela">
+<h2>Criar Sala</h2>
+<input id="nomeSala" placeholder="Nome">
+<input id="descSala" placeholder="Descrição">
+<input id="maxSala" placeholder="Máx jogadores">
+<button onclick="criarSala()">Criar</button>
 </div>
 
-<div id="mapa" class="mapa"></div>
-
-<div class="right">
-  <h3>🎲 Dados</h3>
-  <button onclick="rolar()">Rolar D20</button>
-  <div id="resultado"></div>
+<!-- ENTRAR -->
+<div id="entrarSalaTela" class="tela">
+<h2>Entrar</h2>
+<input id="buscarSala" placeholder="Nome da sala">
+<button onclick="entrarSala()">Entrar</button>
 </div>
 
-</div>
+<!-- SALA -->
+<div id="salaTela" class="tela">
+<h2 id="tituloSala"></h2>
+<div id="listaJogadores"></div>
+<div id="dadosMestre"></div>
 </div>
 
 <script>
 const { createClient } = window.supabase;
 
 const client = createClient(
-  "https://nbgnxxqmpuzucmctxejk.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
+"https://nbgnxxqmpuzucmctxejk.supabase.co",
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
 );
 
-let user = null;
-let nickname = "";
-let sala = null;
+let user, nickname, sala, isMestre=false;
 
+// UI
 function mostrar(id){
-  document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"));
-  document.getElementById(id).classList.add("ativa");
+document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"));
+document.getElementById(id).classList.add("ativa");
 }
 
-// REGISTRAR
+// AUTH
 async function registrar(){
-  const email = document.getElementById("email").value;
-  const senha = document.getElementById("senha").value;
-  const nick = document.getElementById("nickname").value;
+const { data, error } = await client.auth.signUp({
+email: email.value,
+password: senha.value
+});
 
-  const { data, error } = await client.auth.signUp({
-    email,
-    password: senha
-  });
+if(error) return msg(error.message);
 
-  if(error){
-    document.getElementById("msg").innerText = error.message;
-    return;
-  }
+await client.from("jogadores").insert({
+id:data.user.id,
+nickname:nicknameInput.value
+});
 
-  // salvar nickname
-  await client.from("profiles").insert({
-    id: data.user.id,
-    nickname: nick
-  });
-
-  document.getElementById("msg").innerText = "Conta criada!";
+msg("Conta criada!");
 }
 
-// LOGIN
 async function login(){
-  const email = document.getElementById("email").value;
-  const senha = document.getElementById("senha").value;
+const { data, error } = await client.auth.signInWithPassword({
+email: email.value,
+password: senha.value
+});
 
-  const { data, error } = await client.auth.signInWithPassword({
-    email,
-    password: senha
-  });
+if(error) return msg(error.message);
 
-  if(error){
-    document.getElementById("msg").innerText = error.message;
-    return;
-  }
+user = data.user;
 
-  user = data.user;
+const { data:perfil } = await client
+.from("jogadores")
+.select("nickname")
+.eq("id",user.id)
+.single();
 
-  // buscar nickname
-  const { data:perfil } = await client
-    .from("profiles")
-    .select("nickname")
-    .eq("id", user.id)
-    .single();
+nickname = perfil?.nickname || "Jogador";
 
-  nickname = perfil?.nickname || "Jogador";
+mostrar("menuTela");
+}
 
-  document.getElementById("bemvindo").innerText =
-    "Bem-vindo, " + nickname;
+// SALAS
+async function criarSala(){
+if(!nomeSala.value) return alert("Digite o nome");
 
-  mostrar("lobbyTela");
+await client.from("salas").insert({
+nome:nomeSala.value,
+descricao:descSala.value,
+max:parseInt(maxSala.value),
+mestre:user.id
+});
+
+sala = nomeSala.value;
+isMestre = true;
+
+await entrarNaSala();
+}
+
+async function entrarSala(){
+const nome = buscarSala.value;
+
+const { data } = await client.from("salas")
+.select("*").eq("nome",nome).single();
+
+if(!data) return alert("Sala não existe");
+
+sala = nome;
+isMestre = data.mestre === user.id;
+
+// evita duplicar jogador
+const { data:exist } = await client.from("jogadores")
+.select("*").eq("sala",sala).eq("nickname",nickname);
+
+if(!exist.length){
+await client.from("jogadores").insert({
+sala,
+nickname
+});
+}
+
+entrarNaSala();
 }
 
 // SALA
-async function entrarSala(){
-  sala = document.getElementById("sala").value;
-  if(!sala) return alert("Digite a sala");
+function entrarNaSala(){
+mostrar("salaTela");
+tituloSala.innerText = sala;
 
-  mostrar("jogoTela");
-  carregar();
+if(isMestre){
+dadosMestre.innerHTML = `
+<h3>Dados</h3>
+<button onclick="rolar(20)">D20</button>
+<button onclick="rolar(12)">D12</button>
+<button onclick="rolar(10)">D10</button>
+<button onclick="rolar(8)">D8</button>
+<button onclick="rolar(6)">D6</button>
+<button onclick="rolar(4)">D4</button>
+<div id="resultado"></div>
+`;
 }
 
-// DADO
-async function rolar(){
-  let valor = Math.floor(Math.random()*20)+1;
-
-  await client.from("dados").insert({
-    sala,
-    usuario:nickname,
-    valor
-  });
+atualizar();
 }
 
-// TOKEN
-document.getElementById("mapa").onclick = async e=>{
-  await client.from("tokens").insert({
-    sala,
-    nome:nickname,
-    cor:"red",
-    x:e.offsetX,
-    y:e.offsetY
-  });
-};
+// DADOS
+async function rolar(max){
+const valor = Math.floor(Math.random()*max)+1;
 
-// REALTIME
-function carregar(){
-  client.channel("rt")
-    .on('postgres_changes',{event:'*',schema:'public'},()=> atualizar())
-    .subscribe();
-
-  atualizar();
+await client.from("dados").insert({
+sala,
+valor,
+tipo:"D"+max
+});
 }
 
 // UPDATE
-async function atualizar(){
-  const mapa = document.getElementById("mapa");
-  mapa.innerHTML="";
+function atualizar(){
+setInterval(async ()=>{
 
-  const {data:tokens} = await client.from("tokens").select("*").eq("sala",sala);
+const { data:j } = await client.from("jogadores")
+.select("*").eq("sala",sala);
 
-  tokens.forEach(t=>{
-    const el = document.createElement("div");
-    el.className="token";
-    el.style.left=t.x+"px";
-    el.style.top=t.y+"px";
-    el.style.background="red";
-    el.innerText=t.nome[0];
+listaJogadores.innerHTML =
+"<h3>Jogadores</h3>" +
+j.map(x=>x.nickname).join("<br>");
 
-    mapa.appendChild(el);
-  });
+if(isMestre){
+const { data:d } = await client.from("dados")
+.select("*").eq("sala",sala)
+.order("id",{ascending:false}).limit(1);
 
-  const {data:dados} = await client.from("dados")
-    .select("*").eq("sala",sala)
-    .order("id",{ascending:false}).limit(1);
-
-  if(dados && dados[0]){
-    document.getElementById("resultado").innerText =
-      `${dados[0].usuario}: ${dados[0].valor}`;
-  }
+if(d[0]){
+resultado.innerText = d[0].tipo + ": " + d[0].valor;
 }
+}
+
+},1000);
+}
+
+// helpers
+const email = document.getElementById("email");
+const senha = document.getElementById("senha");
+const nicknameInput = document.getElementById("nickname");
+const msg = (t)=>document.getElementById("msg").innerText=t;
 </script>
 
 </body>
