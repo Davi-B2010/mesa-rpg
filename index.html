@@ -13,19 +13,58 @@ body{margin:0;background:#0f172a;color:white;font-family:Segoe UI}
 
 .container{display:grid;grid-template-columns:250px 1fr;height:100vh}
 .sidebar{background:#020617;padding:10px;overflow:auto}
-.mesa{position:relative;background:#111}
+.mesa{display:flex;justify-content:center;align-items:center}
 
-.token{
-width:40px;height:40px;border-radius:50%;
-position:absolute;display:flex;align-items:center;justify-content:center;
-font-weight:bold;cursor:grab
+/* MAPA */
+.mapa-box{
+width:90%;
+height:90%;
+background:#222;
+position:relative;
+border-radius:10px;
+display:flex;
+justify-content:center;
+align-items:center;
 }
 
+#mapaImg{
+max-width:100%;
+max-height:100%;
+position:absolute;
+}
+
+/* BOTÃO MESTRE */
+.overlay{
+position:absolute;
+background:rgba(0,0,0,0.7);
+padding:20px;
+border-radius:10px;
+text-align:center;
+cursor:pointer;
+}
+
+/* TOKEN */
+.token{
+width:40px;height:40px;border-radius:50%;
+position:absolute;
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:bold;
+cursor:grab;
+}
+
+/* POPUP */
 .popup{
-position:fixed;top:20px;left:50%;
+position:fixed;
+top:20px;
+left:50%;
 transform:translateX(-50%);
-background:black;padding:20px;border-radius:10px;
-font-size:22px;display:none
+background:black;
+padding:20px;
+border-radius:10px;
+font-size:22px;
+display:none;
 }
 </style>
 </head>
@@ -67,6 +106,7 @@ font-size:22px;display:none
 <div class="container">
 
 <div class="sidebar">
+
 <h3>🎲 Dados</h3>
 <button onclick="rolar(20)">D20</button>
 <button onclick="rolar(12)">D12</button>
@@ -77,14 +117,27 @@ font-size:22px;display:none
 
 <hr>
 
-<div id="areaMestre"></div>
-
 <h3>📂 PDFs</h3>
 <div id="listaPDF"></div>
 
+<hr>
+
+<div id="areaMestre"></div>
+
 </div>
 
-<div class="mesa" id="mesa"></div>
+<div class="mesa">
+<div id="mapaBox" class="mapa-box">
+
+<img id="mapaImg">
+
+<div id="botaoMapa" class="overlay">
+<input type="file" id="mapaUpload">
+<p>Enviar mapa</p>
+</div>
+
+</div>
+</div>
 
 </div>
 </div>
@@ -113,8 +166,6 @@ const {data,error}=await client.auth.signUp({
 email:email.value,password:senha.value
 });
 if(error)return msg(error.message);
-
-await client.from("salas").insert({nome:"temp",mestre:nick});
 msg("Conta criada");
 }
 
@@ -159,18 +210,18 @@ abrirMesa();
 function abrirMesa(){
 mostrar("mesaTela");
 
-if(isMestre){
-areaMestre.innerHTML=`
+if(!isMestre){
+document.getElementById("botaoMapa").style.display="none";
+}else{
+document.getElementById("areaMestre").innerHTML = `
 <h3>👑 Mestre</h3>
-<input type="file" id="mapaUp">
-<input type="file" id="pdfUp">
-<input id="nomeToken" placeholder="Nome token">
+<input id="nomeToken" placeholder="Nome do jogador">
+<input id="corToken" placeholder="Cor (ex: red)">
 <button onclick="criarToken()">Criar Token</button>
 `;
-
-document.getElementById("mapaUp").onchange=uploadMapa;
-document.getElementById("pdfUp").onchange=uploadPDF;
 }
+
+document.getElementById("mapaUpload").onchange=uploadMapa;
 
 atualizar();
 }
@@ -190,28 +241,19 @@ sala,nome:file.name,url:data.publicUrl,tipo:"mapa"
 });
 }
 
-// PDF
-async function uploadPDF(e){
-const file=e.target.files[0];
-
-await client.storage.from("pdfs")
-.upload(sala+"/"+file.name,file,{upsert:true});
-
-const {data}=client.storage.from("pdfs")
-.getPublicUrl(sala+"/"+file.name);
-
-await client.from("arquivos").insert({
-sala,nome:file.name,url:data.publicUrl,tipo:"pdf"
-});
-}
-
 // TOKEN
 async function criarToken(){
+const nome = document.getElementById("nomeToken").value;
+const cor = document.getElementById("corToken").value || "red";
+
+if(!nome) return alert("Digite o nome");
+
 await client.from("tokens").insert({
-sala,
-dono:nomeToken.value,
-x:100,y:100,
-cor:"red"
+sala: sala,
+dono: nome,
+x: 100,
+y: 100,
+cor: cor
 });
 }
 
@@ -242,53 +284,44 @@ setInterval(async()=>{
 const {data:arq}=await client.from("arquivos")
 .select("*").eq("sala",sala).eq("tipo","mapa");
 
-mesa.innerHTML="";
 if(arq[0]){
-const img=document.createElement("img");
-img.src=arq[0].url;
-img.style.width="100%";
-img.style.height="100%";
-mesa.appendChild(img);
+document.getElementById("mapaImg").src=arq[0].url;
 }
 
 // TOKENS
-const {data:tok}=await client.from("tokens")
+const {data:tok} = await client.from("tokens")
 .select("*").eq("sala",sala);
 
+document.querySelectorAll(".token").forEach(t=>t.remove());
+
 tok.forEach(t=>{
-const el=document.createElement("div");
+const el = document.createElement("div");
 el.className="token";
-el.style.left=t.x+"px";
-el.style.top=t.y+"px";
-el.style.background=t.cor;
-el.innerText=t.dono[0];
+el.style.left = t.x + "px";
+el.style.top = t.y + "px";
+el.style.background = t.cor;
+el.innerText = t.dono[0];
 
-mesa.appendChild(el);
+mapaBox.appendChild(el);
 
-// mover só dono
-if(t.dono===nick){
-el.onmousedown=()=>{
-document.onmousemove=async e=>{
-let x=e.pageX-mesa.offsetLeft;
-let y=e.pageY-mesa.offsetTop;
-el.style.left=x+"px";
-el.style.top=y+"px";
+if(t.dono === nick){
+el.onmousedown = ()=>{
+document.onmousemove = async e=>{
+let x = e.pageX - mapaBox.offsetLeft;
+let y = e.pageY - mapaBox.offsetTop;
+
+el.style.left = x+"px";
+el.style.top = y+"px";
 
 await client.from("tokens")
-.update({x,y}).eq("id",t.id);
+.update({x,y})
+.eq("id",t.id);
 };
-document.onmouseup=()=>document.onmousemove=null;
+document.onmouseup = ()=>document.onmousemove=null;
 };
 }
+
 });
-
-// PDF LISTA
-const {data:pdfs}=await client.from("arquivos")
-.select("*").eq("sala",sala).eq("tipo","pdf");
-
-listaPDF.innerHTML=pdfs.map(p=>
-`<div><a href="${p.url}" target="_blank">${p.nome}</a></div>`
-).join("");
 
 // DADOS
 const {data:d}=await client.from("dados")
