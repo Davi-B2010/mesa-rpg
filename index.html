@@ -30,15 +30,13 @@ body {
   text-align:center;
 }
 
-/* LOGO */
 .logo {
   width:120px;
-  margin-bottom:10px;
 }
 
 .titulo {
   font-size:24px;
-  margin-bottom:20px;
+  margin-bottom:15px;
 }
 
 input {
@@ -85,7 +83,6 @@ button {
   justify-content:center;
   font-weight:bold;
   border:2px solid black;
-  cursor:grab;
 }
 </style>
 </head>
@@ -99,6 +96,7 @@ button {
     <img src="logo.png" class="logo">
     <div class="titulo">Mesas Online</div>
 
+    <input id="nickname" placeholder="Nickname">
     <input id="email" placeholder="Email">
     <input id="senha" type="password" placeholder="Senha">
 
@@ -111,8 +109,7 @@ button {
 
 <!-- LOBBY -->
 <div id="lobbyTela" class="tela">
-  <h2>Mesas Online</h2>
-  <div id="user"></div>
+  <h2 id="bemvindo"></h2>
 
   <input id="sala" placeholder="Nome da sala">
   <button onclick="entrarSala()">Entrar na sala</button>
@@ -144,10 +141,11 @@ const { createClient } = window.supabase;
 
 const client = createClient(
   "https://nbgnxxqmpuzucmctxejk.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 );
 
 let user = null;
+let nickname = "";
 let sala = null;
 
 function mostrar(id){
@@ -155,41 +153,64 @@ function mostrar(id){
   document.getElementById(id).classList.add("ativa");
 }
 
+// REGISTRAR
 async function registrar(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
+  const nick = document.getElementById("nickname").value;
 
-  const { error } = await client.auth.signUp({ email, password: senha });
+  const { data, error } = await client.auth.signUp({
+    email,
+    password: senha
+  });
 
-  document.getElementById("msg").innerText =
-    error ? error.message : "Conta criada!";
+  if(error){
+    document.getElementById("msg").innerText = error.message;
+    return;
+  }
+
+  // salvar nickname
+  await client.from("profiles").insert({
+    id: data.user.id,
+    nickname: nick
+  });
+
+  document.getElementById("msg").innerText = "Conta criada!";
 }
 
+// LOGIN
 async function login(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
 
-  const { data, error } = await client.auth.signInWithPassword({ email, password: senha });
+  const { data, error } = await client.auth.signInWithPassword({
+    email,
+    password: senha
+  });
 
   if(error){
     document.getElementById("msg").innerText = error.message;
-  } else {
-    user = data.user;
-    document.getElementById("user").innerText = user.email;
-    mostrar("lobbyTela");
+    return;
   }
-}
 
-async function verificar(){
-  const { data } = await client.auth.getUser();
   user = data.user;
 
-  if(user){
-    document.getElementById("user").innerText = user.email;
-    mostrar("lobbyTela");
-  }
+  // buscar nickname
+  const { data:perfil } = await client
+    .from("profiles")
+    .select("nickname")
+    .eq("id", user.id)
+    .single();
+
+  nickname = perfil?.nickname || "Jogador";
+
+  document.getElementById("bemvindo").innerText =
+    "Bem-vindo, " + nickname;
+
+  mostrar("lobbyTela");
 }
 
+// SALA
 async function entrarSala(){
   sala = document.getElementById("sala").value;
   if(!sala) return alert("Digite a sala");
@@ -198,26 +219,29 @@ async function entrarSala(){
   carregar();
 }
 
+// DADO
 async function rolar(){
   let valor = Math.floor(Math.random()*20)+1;
 
   await client.from("dados").insert({
     sala,
-    usuario:user.email,
+    usuario:nickname,
     valor
   });
 }
 
+// TOKEN
 document.getElementById("mapa").onclick = async e=>{
   await client.from("tokens").insert({
     sala,
-    nome:document.getElementById("nome").value || "P",
-    cor:document.getElementById("cor").value || "red",
+    nome:nickname,
+    cor:"red",
     x:e.offsetX,
     y:e.offsetY
   });
 };
 
+// REALTIME
 function carregar(){
   client.channel("rt")
     .on('postgres_changes',{event:'*',schema:'public'},()=> atualizar())
@@ -226,6 +250,7 @@ function carregar(){
   atualizar();
 }
 
+// UPDATE
 async function atualizar(){
   const mapa = document.getElementById("mapa");
   mapa.innerHTML="";
@@ -237,7 +262,7 @@ async function atualizar(){
     el.className="token";
     el.style.left=t.x+"px";
     el.style.top=t.y+"px";
-    el.style.background=t.cor;
+    el.style.background="red";
     el.innerText=t.nome[0];
 
     mapa.appendChild(el);
@@ -252,8 +277,6 @@ async function atualizar(){
       `${dados[0].usuario}: ${dados[0].valor}`;
   }
 }
-
-verificar();
 </script>
 
 </body>
