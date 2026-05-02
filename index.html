@@ -8,66 +8,65 @@
 
 <style>
 body{margin:0;background:#0f172a;color:white;font-family:Segoe UI}
+.tela{display:none;height:100vh;justify-content:center;align-items:center;flex-direction:column}
+.ativa{display:flex}
 
-/* LAYOUT */
-.container{
-display:grid;
-grid-template-columns:250px 1fr;
-height:100vh;
-}
+.container{display:grid;grid-template-columns:250px 1fr;height:100vh}
+.sidebar{background:#020617;padding:10px;overflow:auto}
+.mesa{position:relative;background:#111}
 
-.sidebar{
-background:#020617;
-padding:10px;
-}
-
-.mesa{
-position:relative;
-background:#111;
-}
-
-/* MAPA */
-#mapaImg{
-width:100%;
-height:100%;
-object-fit:cover;
-position:absolute;
-}
-
-/* TOKEN */
 .token{
-width:40px;height:40px;
-border-radius:50%;
-position:absolute;
-display:flex;
-align-items:center;
-justify-content:center;
-font-weight:bold;
-cursor:grab;
+width:40px;height:40px;border-radius:50%;
+position:absolute;display:flex;align-items:center;justify-content:center;
+font-weight:bold;cursor:grab
 }
 
-/* POPUP DADO */
 .popup{
-position:fixed;
-top:20px;
-left:50%;
+position:fixed;top:20px;left:50%;
 transform:translateX(-50%);
-background:black;
-padding:20px;
-font-size:20px;
-border-radius:10px;
-display:none;
+background:black;padding:20px;border-radius:10px;
+font-size:22px;display:none
 }
 </style>
 </head>
 
 <body>
 
+<!-- LOGIN -->
+<div id="loginTela" class="tela ativa">
+<h2>Mesas Online</h2>
+<input id="nick" placeholder="Nickname">
+<input id="email" placeholder="Email">
+<input id="senha" type="password" placeholder="Senha">
+<button onclick="registrar()">Criar Conta</button>
+<button onclick="login()">Entrar</button>
+<div id="msg"></div>
+</div>
+
+<!-- MENU -->
+<div id="menuTela" class="tela">
+<h2>Menu</h2>
+<button onclick="mostrar('criarTela')">Criar Sala</button>
+<button onclick="mostrar('entrarTela')">Entrar Sala</button>
+</div>
+
+<!-- CRIAR -->
+<div id="criarTela" class="tela">
+<input id="nomeSala" placeholder="Nome sala">
+<button onclick="criarSala()">Criar</button>
+</div>
+
+<!-- ENTRAR -->
+<div id="entrarTela" class="tela">
+<input id="buscarSala" placeholder="Nome sala">
+<button onclick="entrarSala()">Entrar</button>
+</div>
+
+<!-- MESA -->
+<div id="mesaTela" class="tela">
 <div class="container">
 
-<!-- LADO ESQUERDO -->
 <div class="sidebar">
-
 <h3>🎲 Dados</h3>
 <button onclick="rolar(20)">D20</button>
 <button onclick="rolar(12)">D12</button>
@@ -78,25 +77,16 @@ display:none;
 
 <hr>
 
+<div id="areaMestre"></div>
+
 <h3>📂 PDFs</h3>
-<input type="file" id="pdfUpload">
-
-<hr>
-
-<h3>👑 Mestre</h3>
-<input id="nomeToken" placeholder="Nome token">
-<input id="corToken" placeholder="Cor">
-<button onclick="criarToken()">Criar Token</button>
-
-<input type="file" id="mapaUpload">
+<div id="listaPDF"></div>
 
 </div>
 
-<!-- MESA -->
-<div class="mesa" id="mesa">
-<img id="mapaImg">
-</div>
+<div class="mesa" id="mesa"></div>
 
+</div>
 </div>
 
 <div id="popup" class="popup"></div>
@@ -106,68 +96,166 @@ const { createClient } = window.supabase;
 
 const client = createClient(
 "https://nbgnxxqmpuzucmctxejk.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+"SUA_ANON_KEY_AQUI"
 );
 
-let sala="teste";
-let nickname="Jogador";
-let isMestre=true;
+let user,nick,sala,isMestre=false;
 
-// MAPA
-document.getElementById("mapaUpload").onchange = e=>{
-if(!isMestre) return;
-const file = e.target.files[0];
-const url = URL.createObjectURL(file);
-document.getElementById("mapaImg").src=url;
-};
+// UI
+function mostrar(id){
+document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"));
+document.getElementById(id).classList.add("ativa");
+}
 
-// CRIAR TOKEN
+// AUTH
+async function registrar(){
+const {data,error}=await client.auth.signUp({
+email:email.value,password:senha.value
+});
+if(error)return msg(error.message);
+
+await client.from("salas").insert({nome:"temp",mestre:nick});
+msg("Conta criada");
+}
+
+async function login(){
+const {data,error}=await client.auth.signInWithPassword({
+email:email.value,password:senha.value
+});
+if(error)return msg(error.message);
+
+user=data.user;
+nick=document.getElementById("nick").value;
+mostrar("menuTela");
+}
+
+// SALA
+async function criarSala(){
+sala=nomeSala.value;
+isMestre=true;
+
+await client.from("salas").insert({
+nome:sala,
+mestre:nick
+});
+
+abrirMesa();
+}
+
+async function entrarSala(){
+sala=buscarSala.value;
+
+const {data}=await client.from("salas")
+.select("*").eq("nome",sala).single();
+
+if(!data)return alert("Sala não existe");
+
+isMestre=data.mestre===nick;
+
+abrirMesa();
+}
+
+// MESA
+function abrirMesa(){
+mostrar("mesaTela");
+
+if(isMestre){
+areaMestre.innerHTML=`
+<h3>👑 Mestre</h3>
+<input type="file" id="mapaUp">
+<input type="file" id="pdfUp">
+<input id="nomeToken" placeholder="Nome token">
+<button onclick="criarToken()">Criar Token</button>
+`;
+
+document.getElementById("mapaUp").onchange=uploadMapa;
+document.getElementById("pdfUp").onchange=uploadPDF;
+}
+
+atualizar();
+}
+
+// UPLOAD MAPA
+async function uploadMapa(e){
+const file=e.target.files[0];
+
+await client.storage.from("mapas")
+.upload(sala+"/"+file.name,file,{upsert:true});
+
+const {data}=client.storage.from("mapas")
+.getPublicUrl(sala+"/"+file.name);
+
+await client.from("arquivos").insert({
+sala,nome:file.name,url:data.publicUrl,tipo:"mapa"
+});
+}
+
+// PDF
+async function uploadPDF(e){
+const file=e.target.files[0];
+
+await client.storage.from("pdfs")
+.upload(sala+"/"+file.name,file,{upsert:true});
+
+const {data}=client.storage.from("pdfs")
+.getPublicUrl(sala+"/"+file.name);
+
+await client.from("arquivos").insert({
+sala,nome:file.name,url:data.publicUrl,tipo:"pdf"
+});
+}
+
+// TOKEN
 async function criarToken(){
-if(!isMestre) return;
-
 await client.from("tokens").insert({
 sala,
 dono:nomeToken.value,
-cor:corToken.value,
-x:100,
-y:100
+x:100,y:100,
+cor:"red"
 });
 }
 
 // DADOS
 async function rolar(max){
-if(!isMestre) return;
+if(!isMestre)return;
 
-const valor = Math.floor(Math.random()*max)+1;
+const valor=Math.floor(Math.random()*max)+1;
 
 await client.from("dados").insert({
-sala,
-valor,
-tipo:"D"+max
+sala,valor,tipo:"D"+max
 });
 }
 
 // POPUP
-function mostrarPopup(texto){
+function popup(txt){
 const p=document.getElementById("popup");
-p.innerText=texto;
+p.innerText=txt;
 p.style.display="block";
-
-setTimeout(()=>p.style.display="none",2000);
+setTimeout(()=>p.style.display="none",10000);
 }
 
-// ATUALIZAR
+// LOOP
 function atualizar(){
 setInterval(async()=>{
 
+// MAPA
+const {data:arq}=await client.from("arquivos")
+.select("*").eq("sala",sala).eq("tipo","mapa");
+
+mesa.innerHTML="";
+if(arq[0]){
+const img=document.createElement("img");
+img.src=arq[0].url;
+img.style.width="100%";
+img.style.height="100%";
+mesa.appendChild(img);
+}
+
 // TOKENS
-const {data:tokens}=await client.from("tokens")
+const {data:tok}=await client.from("tokens")
 .select("*").eq("sala",sala);
 
-const mesa=document.getElementById("mesa");
-mesa.innerHTML='<img id="mapaImg">';
-
-tokens.forEach(t=>{
+tok.forEach(t=>{
 const el=document.createElement("div");
 el.className="token";
 el.style.left=t.x+"px";
@@ -178,36 +266,41 @@ el.innerText=t.dono[0];
 mesa.appendChild(el);
 
 // mover só dono
-if(t.dono===nickname){
-el.onmousedown=(ev)=>{
+if(t.dono===nick){
+el.onmousedown=()=>{
 document.onmousemove=async e=>{
 let x=e.pageX-mesa.offsetLeft;
 let y=e.pageY-mesa.offsetTop;
-
 el.style.left=x+"px";
 el.style.top=y+"px";
 
-await client.from("tokens").update({x,y}).eq("id",t.id);
+await client.from("tokens")
+.update({x,y}).eq("id",t.id);
 };
 document.onmouseup=()=>document.onmousemove=null;
 };
 }
-
 });
+
+// PDF LISTA
+const {data:pdfs}=await client.from("arquivos")
+.select("*").eq("sala",sala).eq("tipo","pdf");
+
+listaPDF.innerHTML=pdfs.map(p=>
+`<div><a href="${p.url}" target="_blank">${p.nome}</a></div>`
+).join("");
 
 // DADOS
 const {data:d}=await client.from("dados")
 .select("*").eq("sala",sala)
 .order("id",{ascending:false}).limit(1);
 
-if(d[0]){
-mostrarPopup(d[0].tipo+" → "+d[0].valor);
+if(d[0]) popup(d[0].tipo+" → "+d[0].valor);
+
+},1500);
 }
 
-},1000);
-}
-
-atualizar();
+const msg=t=>document.getElementById("msg").innerText=t;
 </script>
 
 </body>
