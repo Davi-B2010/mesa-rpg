@@ -7,176 +7,137 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Segoe UI;background:#0f172a;color:white}
-.tela{display:none;height:100vh;justify-content:center;align-items:center;flex-direction:column}
-.ativa{display:flex}
-input,button{padding:10px;margin:5px;border-radius:6px;border:none}
-button{background:#6366f1;color:white;cursor:pointer}
+body{margin:0;background:#0f172a;color:white;font-family:Segoe UI}
+
+/* LAYOUT */
+.container{
+display:grid;
+grid-template-columns:250px 1fr;
+height:100vh;
+}
+
+.sidebar{
+background:#020617;
+padding:10px;
+}
+
+.mesa{
+position:relative;
+background:#111;
+}
+
+/* MAPA */
+#mapaImg{
+width:100%;
+height:100%;
+object-fit:cover;
+position:absolute;
+}
+
+/* TOKEN */
+.token{
+width:40px;height:40px;
+border-radius:50%;
+position:absolute;
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:bold;
+cursor:grab;
+}
+
+/* POPUP DADO */
+.popup{
+position:fixed;
+top:20px;
+left:50%;
+transform:translateX(-50%);
+background:black;
+padding:20px;
+font-size:20px;
+border-radius:10px;
+display:none;
+}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
-<div id="loginTela" class="tela ativa">
-<h2>Mesas Online</h2>
-<input id="nickname" placeholder="Nickname">
-<input id="email" placeholder="Email">
-<input id="senha" type="password" placeholder="Senha">
-<button onclick="registrar()">Criar Conta</button>
-<button onclick="login()">Entrar</button>
-<div id="msg"></div>
-</div>
+<div class="container">
 
-<!-- MENU -->
-<div id="menuTela" class="tela">
-<h2>Menu</h2>
-<button onclick="mostrar('criarSalaTela')">Criar Sala</button>
-<button onclick="mostrar('entrarSalaTela')">Entrar em Sala</button>
-</div>
+<!-- LADO ESQUERDO -->
+<div class="sidebar">
 
-<!-- CRIAR -->
-<div id="criarSalaTela" class="tela">
-<h2>Criar Sala</h2>
-<input id="nomeSala" placeholder="Nome">
-<input id="descSala" placeholder="Descrição">
-<input id="maxSala" placeholder="Máx jogadores">
-<button onclick="criarSala()">Criar</button>
-</div>
-
-<!-- ENTRAR -->
-<div id="entrarSalaTela" class="tela">
-<h2>Entrar</h2>
-<input id="buscarSala" placeholder="Nome da sala">
-<button onclick="entrarSala()">Entrar</button>
-</div>
-
-<!-- SALA -->
-<div id="salaTela" class="tela">
-<h2 id="tituloSala"></h2>
-<div id="listaJogadores"></div>
-<div id="dadosMestre"></div>
-</div>
-
-<script>
-const { createClient } = window.supabase;
-
-const client = createClient(
-"https://nbgnxxqmpuzucmctxejk.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
-);
-
-let user, nickname, sala, isMestre=false;
-
-// UI
-function mostrar(id){
-document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"));
-document.getElementById(id).classList.add("ativa");
-}
-
-// AUTH
-async function registrar(){
-const { data, error } = await client.auth.signUp({
-email: email.value,
-password: senha.value
-});
-
-if(error) return msg(error.message);
-
-await client.from("jogadores").insert({
-id:data.user.id,
-nickname:nicknameInput.value
-});
-
-msg("Conta criada!");
-}
-
-async function login(){
-const { data, error } = await client.auth.signInWithPassword({
-email: email.value,
-password: senha.value
-});
-
-if(error) return msg(error.message);
-
-user = data.user;
-
-const { data:perfil } = await client
-.from("jogadores")
-.select("nickname")
-.eq("id",user.id)
-.single();
-
-nickname = perfil?.nickname || "Jogador";
-
-mostrar("menuTela");
-}
-
-// SALAS
-async function criarSala(){
-if(!nomeSala.value) return alert("Digite o nome");
-
-await client.from("salas").insert({
-nome:nomeSala.value,
-descricao:descSala.value,
-max:parseInt(maxSala.value),
-mestre:user.id
-});
-
-sala = nomeSala.value;
-isMestre = true;
-
-await entrarNaSala();
-}
-
-async function entrarSala(){
-const nome = buscarSala.value;
-
-const { data } = await client.from("salas")
-.select("*").eq("nome",nome).single();
-
-if(!data) return alert("Sala não existe");
-
-sala = nome;
-isMestre = data.mestre === user.id;
-
-// evita duplicar jogador
-const { data:exist } = await client.from("jogadores")
-.select("*").eq("sala",sala).eq("nickname",nickname);
-
-if(!exist.length){
-await client.from("jogadores").insert({
-sala,
-nickname
-});
-}
-
-entrarNaSala();
-}
-
-// SALA
-function entrarNaSala(){
-mostrar("salaTela");
-tituloSala.innerText = sala;
-
-if(isMestre){
-dadosMestre.innerHTML = `
-<h3>Dados</h3>
+<h3>🎲 Dados</h3>
 <button onclick="rolar(20)">D20</button>
 <button onclick="rolar(12)">D12</button>
 <button onclick="rolar(10)">D10</button>
 <button onclick="rolar(8)">D8</button>
 <button onclick="rolar(6)">D6</button>
 <button onclick="rolar(4)">D4</button>
-<div id="resultado"></div>
-`;
-}
 
-atualizar();
+<hr>
+
+<h3>📂 PDFs</h3>
+<input type="file" id="pdfUpload">
+
+<hr>
+
+<h3>👑 Mestre</h3>
+<input id="nomeToken" placeholder="Nome token">
+<input id="corToken" placeholder="Cor">
+<button onclick="criarToken()">Criar Token</button>
+
+<input type="file" id="mapaUpload">
+
+</div>
+
+<!-- MESA -->
+<div class="mesa" id="mesa">
+<img id="mapaImg">
+</div>
+
+</div>
+
+<div id="popup" class="popup"></div>
+
+<script>
+const { createClient } = window.supabase;
+
+const client = createClient(
+"https://nbgnxxqmpuzucmctxejk.supabase.co",
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+);
+
+let sala="teste";
+let nickname="Jogador";
+let isMestre=true;
+
+// MAPA
+document.getElementById("mapaUpload").onchange = e=>{
+if(!isMestre) return;
+const file = e.target.files[0];
+const url = URL.createObjectURL(file);
+document.getElementById("mapaImg").src=url;
+};
+
+// CRIAR TOKEN
+async function criarToken(){
+if(!isMestre) return;
+
+await client.from("tokens").insert({
+sala,
+dono:nomeToken.value,
+cor:corToken.value,
+x:100,
+y:100
+});
 }
 
 // DADOS
 async function rolar(max){
+if(!isMestre) return;
+
 const valor = Math.floor(Math.random()*max)+1;
 
 await client.from("dados").insert({
@@ -186,35 +147,67 @@ tipo:"D"+max
 });
 }
 
-// UPDATE
-function atualizar(){
-setInterval(async ()=>{
+// POPUP
+function mostrarPopup(texto){
+const p=document.getElementById("popup");
+p.innerText=texto;
+p.style.display="block";
 
-const { data:j } = await client.from("jogadores")
+setTimeout(()=>p.style.display="none",2000);
+}
+
+// ATUALIZAR
+function atualizar(){
+setInterval(async()=>{
+
+// TOKENS
+const {data:tokens}=await client.from("tokens")
 .select("*").eq("sala",sala);
 
-listaJogadores.innerHTML =
-"<h3>Jogadores</h3>" +
-j.map(x=>x.nickname).join("<br>");
+const mesa=document.getElementById("mesa");
+mesa.innerHTML='<img id="mapaImg">';
 
-if(isMestre){
-const { data:d } = await client.from("dados")
+tokens.forEach(t=>{
+const el=document.createElement("div");
+el.className="token";
+el.style.left=t.x+"px";
+el.style.top=t.y+"px";
+el.style.background=t.cor;
+el.innerText=t.dono[0];
+
+mesa.appendChild(el);
+
+// mover só dono
+if(t.dono===nickname){
+el.onmousedown=(ev)=>{
+document.onmousemove=async e=>{
+let x=e.pageX-mesa.offsetLeft;
+let y=e.pageY-mesa.offsetTop;
+
+el.style.left=x+"px";
+el.style.top=y+"px";
+
+await client.from("tokens").update({x,y}).eq("id",t.id);
+};
+document.onmouseup=()=>document.onmousemove=null;
+};
+}
+
+});
+
+// DADOS
+const {data:d}=await client.from("dados")
 .select("*").eq("sala",sala)
 .order("id",{ascending:false}).limit(1);
 
 if(d[0]){
-resultado.innerText = d[0].tipo + ": " + d[0].valor;
-}
+mostrarPopup(d[0].tipo+" → "+d[0].valor);
 }
 
 },1000);
 }
 
-// helpers
-const email = document.getElementById("email");
-const senha = document.getElementById("senha");
-const nicknameInput = document.getElementById("nickname");
-const msg = (t)=>document.getElementById("msg").innerText=t;
+atualizar();
 </script>
 
 </body>
