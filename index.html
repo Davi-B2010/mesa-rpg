@@ -120,6 +120,7 @@ overflow:hidden;
 width:100%;
 height:100%;
 object-fit:contain;
+display:none;
 }
 
 .overlay{
@@ -131,6 +132,7 @@ background:black;
 border:1px solid red;
 padding:15px;
 border-radius:10px;
+z-index:10;
 }
 
 /* TOKEN */
@@ -237,7 +239,7 @@ z-index:999;
 <img id="mapaImg">
 
 <div id="botaoMapa" class="overlay">
-<input type="file" id="mapaUpload">
+<input type="file" id="mapaUpload" accept="image/*">
 <p>Enviar mapa</p>
 </div>
 
@@ -362,34 +364,55 @@ document.getElementById("mapaUpload")
 atualizar();
 }
 
-// UPLOAD MAPA
+// ✅ MAPA CORRIGIDO
 async function uploadMapa(e){
 
 const file=e.target.files[0];
 
 if(!file)return;
 
-await client.storage
-.from("mapas")
-.upload(
-sala+"/"+file.name,
-file,
-{upsert:true}
-);
+// nome único
+const nomeArquivo=Date.now()+"_"+file.name;
 
-const {data}=client.storage
-.from("mapas")
-.getPublicUrl(sala+"/"+file.name);
+const caminho=sala+"/"+nomeArquivo;
 
+// upload
+const {error:uploadError}=await client.storage
+.from("mapas")
+.upload(caminho,file,{
+upsert:true
+});
+
+if(uploadError){
+alert(uploadError.message);
+return;
+}
+
+// pegar URL pública
+const {data:urlData}=client.storage
+.from("mapas")
+.getPublicUrl(caminho);
+
+const url=urlData.publicUrl;
+
+// salvar banco
 await client.from("arquivos")
 .insert({
 sala:sala,
-nome:file.name,
-url:data.publicUrl,
+nome:nomeArquivo,
+url:url,
 tipo:"mapa"
 });
 
-mapaImg.src=data.publicUrl;
+// mostrar instantaneamente
+const img=document.getElementById("mapaImg");
+
+img.src=url+"?t="+Date.now();
+img.style.display="block";
+
+// esconder botão
+document.getElementById("botaoMapa")
+.style.display="none";
 }
 
 // CRIAR TOKEN
@@ -443,17 +466,35 @@ popup.style.display="none";
 // ATUALIZAÇÕES
 function atualizar(){
 
-setInterval(async()=>{
+if(window.loopMesa){
+clearInterval(window.loopMesa);
+}
+
+window.loopMesa=setInterval(async()=>{
 
 // MAPA
 const {data:mapas}=await client
 .from("arquivos")
 .select("*")
 .eq("sala",sala)
-.eq("tipo","mapa");
+.eq("tipo","mapa")
+.order("id",{ascending:false})
+.limit(1);
 
 if(mapas && mapas[0]){
-mapaImg.src=mapas[0].url;
+
+const img=document.getElementById("mapaImg");
+
+if(img.src!==mapas[0].url){
+
+img.src=mapas[0].url+"?t="+Date.now();
+img.style.display="block";
+
+document.getElementById("botaoMapa")
+.style.display="none";
+
+}
+
 }
 
 // TOKENS
@@ -481,14 +522,16 @@ mapaBox.appendChild(el);
 // ARRASTAR
 if(isMestre || token.dono===nick){
 
-el.onmousedown=()=>{
+el.onmousedown=(ev)=>{
+
+ev.preventDefault();
 
 document.onmousemove=async(e)=>{
 
 const rect=mapaBox.getBoundingClientRect();
 
-let x=e.clientX-rect.left;
-let y=e.clientY-rect.top;
+let x=e.clientX-rect.left-20;
+let y=e.clientY-rect.top-20;
 
 el.style.left=x+"px";
 el.style.top=y+"px";
