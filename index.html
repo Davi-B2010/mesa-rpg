@@ -9,8 +9,8 @@
 <style>
 body{
 margin:0;
-background:#0b0f1a;
-color:white;
+background:black;
+color:red;
 font-family:Segoe UI;
 overflow:hidden;
 }
@@ -25,56 +25,31 @@ flex-direction:column
 
 .ativa{display:flex}
 
-/* 🔥 INTERFACE NOVA */
-#mesaTela{
-display:block;
-}
-
-/* LAYOUT */
 .container{
 display:grid;
 grid-template-columns:260px 1fr;
 height:100vh;
 }
 
-/* SIDEBAR ESTILO RPG */
 .sidebar{
-background:#111827;
-padding:15px;
-display:flex;
-flex-direction:column;
-gap:10px;
-border-right:2px solid #1f2937;
-}
-
-.sidebar h3{
-margin:5px 0;
-font-size:14px;
-color:#9ca3af;
+background:#000;
+border-right:2px solid red;
+padding:10px;
 }
 
 .sidebar button{
-background:#1f2937;
-border:none;
-padding:10px;
-color:white;
-border-radius:6px;
+background:black;
+color:red;
+border:1px solid red;
+padding:8px;
+margin:2px;
 cursor:pointer;
-transition:0.2s;
 }
 
-.sidebar button:hover{
-background:#374151;
-}
-
-/* MESA */
 .mesa{
 position:relative;
-background:#020617;
-overflow:hidden;
 }
 
-/* MAPA */
 .mapa-box{
 position:absolute;
 top:50%;
@@ -82,10 +57,7 @@ left:50%;
 transform:translate(-50%,-50%);
 width:90%;
 height:90%;
-background:#111;
-border:2px solid #1f2937;
-border-radius:10px;
-overflow:hidden;
+border:2px solid red;
 }
 
 #mapaImg{
@@ -94,19 +66,16 @@ height:100%;
 object-fit:contain;
 }
 
-/* BOTÃO MESTRE */
 .overlay{
 position:absolute;
 top:50%;
 left:50%;
 transform:translate(-50%,-50%);
-background:rgba(0,0,0,0.8);
-padding:20px;
-border-radius:10px;
-text-align:center;
+background:black;
+border:1px solid red;
+padding:10px;
 }
 
-/* TOKEN */
 .token{
 width:40px;
 height:40px;
@@ -115,21 +84,19 @@ position:absolute;
 display:flex;
 align-items:center;
 justify-content:center;
-font-weight:bold;
+background:red;
+color:black;
 cursor:grab;
-border:2px solid black;
 }
 
-/* POPUP DADO */
 .popup{
-position:absolute;
+position:fixed;
 bottom:20px;
 left:50%;
 transform:translateX(-50%);
 background:black;
-padding:15px 25px;
-border-radius:10px;
-font-size:22px;
+border:2px solid red;
+padding:15px;
 display:none;
 }
 </style>
@@ -137,71 +104,39 @@ display:none;
 
 <body>
 
-<!-- LOGIN -->
 <div id="loginTela" class="tela ativa">
-<h2>Mesas Online</h2>
 <input id="nick" placeholder="Nickname">
 <input id="email" placeholder="Email">
 <input id="senha" type="password" placeholder="Senha">
-<button onclick="registrar()">Criar Conta</button>
 <button onclick="login()">Entrar</button>
-<div id="msg"></div>
 </div>
 
-<!-- MENU -->
 <div id="menuTela" class="tela">
-<h2>Menu</h2>
-<button onclick="mostrar('criarTela')">Criar Sala</button>
-<button onclick="mostrar('entrarTela')">Entrar Sala</button>
+<button onclick="criarSala()">Criar Sala</button>
+<input id="codigoSala" placeholder="Código da sala">
+<button onclick="entrarSala()">Entrar Sala</button>
 </div>
 
-<!-- CRIAR -->
-<div id="criarTela" class="tela">
-<input id="nomeSala" placeholder="Nome sala">
-<button onclick="criarSala()">Criar</button>
-</div>
-
-<!-- ENTRAR -->
-<div id="entrarTela" class="tela">
-<input id="buscarSala" placeholder="Nome sala">
-<button onclick="entrarSala()">Entrar</button>
-</div>
-
-<!-- MESA -->
 <div id="mesaTela" class="tela">
 <div class="container">
 
-<!-- SIDEBAR -->
 <div class="sidebar">
-
-<h3>🎲 Dados</h3>
+<h3>Dados</h3>
 <button onclick="rolar(20)">D20</button>
 <button onclick="rolar(12)">D12</button>
 <button onclick="rolar(10)">D10</button>
-<button onclick="rolar(8)">D8</button>
-<button onclick="rolar(6)">D6</button>
-<button onclick="rolar(4)">D4</button>
 
-<hr>
-
-<h3>📂 PDFs</h3>
-<div id="listaPDF"></div>
-
-<hr>
+<h3 id="codigoMostrado"></h3>
 
 <div id="areaMestre"></div>
-
 </div>
 
-<!-- MESA -->
 <div class="mesa">
 <div id="mapaBox" class="mapa-box">
-
 <img id="mapaImg">
 
 <div id="botaoMapa" class="overlay">
 <input type="file" id="mapaUpload">
-<p>Enviar mapa</p>
 </div>
 
 </div>
@@ -213,14 +148,12 @@ display:none;
 <div id="popup" class="popup"></div>
 
 <script>
-const { createClient } = window.supabase;
-
-const client = createClient(
+const client = supabase.createClient(
 "https://nbgnxxqmpuzucmctxejk.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 );
 
-let user,nick,sala,isMestre=false;
+let nick,sala,isMestre=false,lastRollId=null;
 
 // UI
 function mostrar(id){
@@ -228,44 +161,40 @@ document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"));
 document.getElementById(id).classList.add("ativa");
 }
 
-// AUTH
-async function registrar(){
-const {error}=await client.auth.signUp({
-email:email.value,password:senha.value
-});
-if(error)return msg(error.message);
-msg("Conta criada");
-}
-
+// LOGIN
 async function login(){
-const {data,error}=await client.auth.signInWithPassword({
-email:email.value,password:senha.value
-});
-if(error)return msg(error.message);
-
-user=data.user;
 nick=document.getElementById("nick").value;
 mostrar("menuTela");
 }
 
-// SALA
+// GERAR CODIGO
+function gerarCodigo(){
+return Math.random().toString(36).substring(2,8);
+}
+
+// CRIAR SALA
 async function criarSala(){
-sala=nomeSala.value;
+sala=gerarCodigo();
 isMestre=true;
 
-await client.from("salas").insert({nome:sala,mestre:nick});
+await client.from("salas").insert({
+nome:sala,
+mestre:nick
+});
+
 abrirMesa();
 }
 
+// ENTRAR SALA
 async function entrarSala(){
-sala=buscarSala.value;
+sala=document.getElementById("codigoSala").value;
 
 const {data}=await client.from("salas")
 .select("*").eq("nome",sala).single();
 
-if(!data)return alert("Sala não existe");
+if(!data)return alert("Código inválido");
 
-isMestre=data.mestre===nick;
+isMestre=false;
 abrirMesa();
 }
 
@@ -273,18 +202,19 @@ abrirMesa();
 function abrirMesa(){
 mostrar("mesaTela");
 
+document.getElementById("codigoMostrado").innerText="Código: "+sala;
+
 if(!isMestre){
-document.getElementById("botaoMapa").style.display="none";
+botaoMapa.style.display="none";
 }else{
 areaMestre.innerHTML=`
-<h3>👑 Mestre</h3>
-<input id="nomeToken" placeholder="Nome jogador">
-<input id="corToken" placeholder="Cor">
+<input id="nomeToken">
 <button onclick="criarToken()">Criar Token</button>
 `;
 }
 
 mapaUpload.onchange=uploadMapa;
+
 atualizar();
 }
 
@@ -310,26 +240,29 @@ sala,
 dono:nomeToken.value,
 x:100,
 y:100,
-cor:corToken.value||"red"
+cor:"red"
 });
 }
 
 // DADOS
 async function rolar(max){
-if(!isMestre)return;
-
 const valor=Math.floor(Math.random()*max)+1;
 
-await client.from("dados").insert({
+const {data}=await client.from("dados").insert({
 sala,valor,tipo:"D"+max
-});
+}).select().single();
+
+mostrarDado(data);
 }
 
-// POPUP
-function popup(txt){
-popupEl.innerText=txt;
-popupEl.style.display="block";
-setTimeout(()=>popupEl.style.display="none",10000);
+// MOSTRAR DADO
+function mostrarDado(d){
+popup.innerText=d.tipo+" → "+d.valor;
+popup.style.display="block";
+
+setTimeout(()=>{
+popup.style.display="none";
+},10000);
 }
 
 // LOOP
@@ -353,12 +286,12 @@ const el=document.createElement("div");
 el.className="token";
 el.style.left=t.x+"px";
 el.style.top=t.y+"px";
-el.style.background=t.cor;
 el.innerText=t.dono[0];
 
 mapaBox.appendChild(el);
 
-if(t.dono===nick){
+// MOVER (MESTRE OU DONO)
+if(isMestre || t.dono===nick){
 el.onmousedown=()=>{
 document.onmousemove=async e=>{
 let x=e.pageX-mapaBox.offsetLeft;
@@ -372,20 +305,11 @@ await client.from("tokens").update({x,y}).eq("id",t.id);
 document.onmouseup=()=>document.onmousemove=null;
 };
 }
+
 });
-
-// DADOS
-const {data:d}=await client.from("dados")
-.select("*").eq("sala",sala)
-.order("id",{ascending:false}).limit(1);
-
-if(d[0]) popup(d[0].tipo+" → "+d[0].valor);
 
 },1500);
 }
-
-const popupEl=document.getElementById("popup");
-const msg=t=>document.getElementById("msg").innerText=t;
 </script>
 
 </body>
