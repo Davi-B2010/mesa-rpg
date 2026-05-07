@@ -152,7 +152,7 @@ user-select:none;
 z-index:20;
 }
 
-/* POPUP DADO */
+/* POPUP */
 .popup{
 position:fixed;
 bottom:20px;
@@ -264,7 +264,6 @@ const client = supabase.createClient(
 let nick;
 let sala;
 let isMestre=false;
-let movendoToken=false;
 
 // TROCAR TELA
 function mostrar(id){
@@ -276,7 +275,7 @@ document.getElementById(id)
 }
 
 // LOGIN
-async function login(){
+function login(){
 
 nick=document.getElementById("nick").value;
 
@@ -363,7 +362,11 @@ Criar Token
 document.getElementById("mapaUpload")
 .onchange=uploadMapa;
 
-atualizar();
+carregarMapa();
+carregarTokens();
+
+setInterval(carregarTokens,1000);
+setInterval(carregarMapa,2000);
 }
 
 // MAPA
@@ -377,39 +380,55 @@ const nomeArquivo=Date.now()+"_"+file.name;
 
 const caminho=sala+"/"+nomeArquivo;
 
-const {error:uploadError}=await client.storage
+const {error}=await client.storage
 .from("mapas")
 .upload(caminho,file,{upsert:true});
 
-if(uploadError){
-alert(uploadError.message);
+if(error){
+alert(error.message);
 return;
 }
 
-const {data:urlData}=client.storage
+const {data}=client.storage
 .from("mapas")
 .getPublicUrl(caminho);
-
-const url=urlData.publicUrl;
 
 await client.from("arquivos")
 .insert({
 sala:sala,
 nome:nomeArquivo,
-url:url,
+url:data.publicUrl,
 tipo:"mapa"
 });
 
+carregarMapa();
+}
+
+// CARREGAR MAPA
+async function carregarMapa(){
+
+const {data}=await client
+.from("arquivos")
+.select("*")
+.eq("sala",sala)
+.eq("tipo","mapa")
+.order("id",{ascending:false})
+.limit(1);
+
+if(data && data[0]){
+
 const img=document.getElementById("mapaImg");
 
-img.src=url+"?t="+Date.now();
+img.src=data[0].url+"?"+Date.now();
 img.style.display="block";
 
 document.getElementById("botaoMapa")
 .style.display="none";
+
+}
 }
 
-// TOKEN
+// CRIAR TOKEN
 async function criarToken(){
 
 const nome=document.getElementById("nomeToken").value;
@@ -421,8 +440,90 @@ await client.from("tokens")
 sala:sala,
 dono:nome,
 x:100,
-y:100,
-cor:"red"
+y:100
+});
+
+carregarTokens();
+}
+
+// CARREGAR TOKENS
+async function carregarTokens(){
+
+const {data}=await client
+.from("tokens")
+.select("*")
+.eq("sala",sala);
+
+document.querySelectorAll(".token")
+.forEach(t=>t.remove());
+
+data.forEach(token=>{
+
+const el=document.createElement("div");
+
+el.className="token";
+
+el.style.left=token.x+"px";
+el.style.top=token.y+"px";
+
+el.innerText=token.dono[0];
+
+el.dataset.id=token.id;
+
+mapaBox.appendChild(el);
+
+// MOVER TOKEN
+if(isMestre || token.dono===nick){
+
+let segurando=false;
+
+el.addEventListener("mousedown",(ev)=>{
+
+segurando=true;
+
+const rect=mapaBox.getBoundingClientRect();
+
+const offsetX=ev.clientX-el.offsetLeft;
+const offsetY=ev.clientY-el.offsetTop;
+
+function mover(e){
+
+if(!segurando)return;
+
+let x=e.clientX-rect.left-offsetX;
+let y=e.clientY-rect.top-offsetY;
+
+el.style.left=x+"px";
+el.style.top=y+"px";
+
+}
+
+document.addEventListener("mousemove",mover);
+
+document.addEventListener("mouseup",async()=>{
+
+if(segurando){
+
+segurando=false;
+
+const x=parseInt(el.style.left);
+const y=parseInt(el.style.top);
+
+await client
+.from("tokens")
+.update({x,y})
+.eq("id",token.id);
+
+}
+
+document.removeEventListener("mousemove",mover);
+
+},{once:true});
+
+});
+
+}
+
 });
 }
 
@@ -455,117 +556,6 @@ clearTimeout(window.popupTimer);
 window.popupTimer=setTimeout(()=>{
 popup.style.display="none";
 },10000);
-}
-
-// LOOP
-function atualizar(){
-
-if(window.loopMesa){
-clearInterval(window.loopMesa);
-}
-
-window.loopMesa=setInterval(async()=>{
-
-// NÃO atualizar enquanto move
-if(movendoToken)return;
-
-// MAPA
-const {data:mapas}=await client
-.from("arquivos")
-.select("*")
-.eq("sala",sala)
-.eq("tipo","mapa")
-.order("id",{ascending:false})
-.limit(1);
-
-if(mapas && mapas[0]){
-
-const img=document.getElementById("mapaImg");
-
-if(!img.src.includes(mapas[0].url)){
-
-img.src=mapas[0].url+"?t="+Date.now();
-img.style.display="block";
-
-document.getElementById("botaoMapa")
-.style.display="none";
-
-}
-
-}
-
-// TOKENS
-const {data:tokens}=await client
-.from("tokens")
-.select("*")
-.eq("sala",sala);
-
-document.querySelectorAll(".token")
-.forEach(t=>t.remove());
-
-tokens.forEach(token=>{
-
-const el=document.createElement("div");
-
-el.className="token";
-
-el.style.left=token.x+"px";
-el.style.top=token.y+"px";
-
-el.innerText=token.dono[0];
-
-mapaBox.appendChild(el);
-
-// ARRASTAR
-if(isMestre || token.dono===nick){
-
-el.onmousedown=(ev)=>{
-
-ev.preventDefault();
-
-movendoToken=true;
-
-document.onmousemove=(e)=>{
-
-const rect=mapaBox.getBoundingClientRect();
-
-let x=e.clientX-rect.left-20;
-let y=e.clientY-rect.top-20;
-
-el.style.left=x+"px";
-el.style.top=y+"px";
-
-};
-
-document.onmouseup=async(e)=>{
-
-const rect=mapaBox.getBoundingClientRect();
-
-let x=e.clientX-rect.left-20;
-let y=e.clientY-rect.top-20;
-
-await client.from("tokens")
-.update({
-x:x,
-y:y
-})
-.eq("id",token.id);
-
-document.onmousemove=null;
-document.onmouseup=null;
-
-movendoToken=false;
-
-};
-
-};
-
-}
-
-});
-
-},1500);
-
 }
 </script>
 
