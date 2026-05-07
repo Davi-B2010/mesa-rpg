@@ -149,6 +149,7 @@ color:black;
 font-weight:bold;
 cursor:grab;
 user-select:none;
+z-index:20;
 }
 
 /* POPUP DADO */
@@ -263,6 +264,7 @@ const client = supabase.createClient(
 let nick;
 let sala;
 let isMestre=false;
+let movendoToken=false;
 
 // TROCAR TELA
 function mostrar(id){
@@ -364,38 +366,32 @@ document.getElementById("mapaUpload")
 atualizar();
 }
 
-// ✅ MAPA CORRIGIDO
+// MAPA
 async function uploadMapa(e){
 
 const file=e.target.files[0];
 
 if(!file)return;
 
-// nome único
 const nomeArquivo=Date.now()+"_"+file.name;
 
 const caminho=sala+"/"+nomeArquivo;
 
-// upload
 const {error:uploadError}=await client.storage
 .from("mapas")
-.upload(caminho,file,{
-upsert:true
-});
+.upload(caminho,file,{upsert:true});
 
 if(uploadError){
 alert(uploadError.message);
 return;
 }
 
-// pegar URL pública
 const {data:urlData}=client.storage
 .from("mapas")
 .getPublicUrl(caminho);
 
 const url=urlData.publicUrl;
 
-// salvar banco
 await client.from("arquivos")
 .insert({
 sala:sala,
@@ -404,18 +400,16 @@ url:url,
 tipo:"mapa"
 });
 
-// mostrar instantaneamente
 const img=document.getElementById("mapaImg");
 
 img.src=url+"?t="+Date.now();
 img.style.display="block";
 
-// esconder botão
 document.getElementById("botaoMapa")
 .style.display="none";
 }
 
-// CRIAR TOKEN
+// TOKEN
 async function criarToken(){
 
 const nome=document.getElementById("nomeToken").value;
@@ -432,7 +426,7 @@ cor:"red"
 });
 }
 
-// ROLAR DADO
+// DADOS
 async function rolar(max){
 
 const valor=Math.floor(Math.random()*max)+1;
@@ -447,7 +441,7 @@ tipo:"D"+max
 });
 }
 
-// MOSTRAR DADO
+// POPUP
 function mostrarDado(texto){
 
 const popup=document.getElementById("popup");
@@ -463,7 +457,7 @@ popup.style.display="none";
 },10000);
 }
 
-// ATUALIZAÇÕES
+// LOOP
 function atualizar(){
 
 if(window.loopMesa){
@@ -471,6 +465,9 @@ clearInterval(window.loopMesa);
 }
 
 window.loopMesa=setInterval(async()=>{
+
+// NÃO atualizar enquanto move
+if(movendoToken)return;
 
 // MAPA
 const {data:mapas}=await client
@@ -485,7 +482,7 @@ if(mapas && mapas[0]){
 
 const img=document.getElementById("mapaImg");
 
-if(img.src!==mapas[0].url){
+if(!img.src.includes(mapas[0].url)){
 
 img.src=mapas[0].url+"?t="+Date.now();
 img.style.display="block";
@@ -526,7 +523,9 @@ el.onmousedown=(ev)=>{
 
 ev.preventDefault();
 
-document.onmousemove=async(e)=>{
+movendoToken=true;
+
+document.onmousemove=(e)=>{
 
 const rect=mapaBox.getBoundingClientRect();
 
@@ -536,6 +535,15 @@ let y=e.clientY-rect.top-20;
 el.style.left=x+"px";
 el.style.top=y+"px";
 
+};
+
+document.onmouseup=async(e)=>{
+
+const rect=mapaBox.getBoundingClientRect();
+
+let x=e.clientX-rect.left-20;
+let y=e.clientY-rect.top-20;
+
 await client.from("tokens")
 .update({
 x:x,
@@ -543,10 +551,11 @@ y:y
 })
 .eq("id",token.id);
 
-};
-
-document.onmouseup=()=>{
 document.onmousemove=null;
+document.onmouseup=null;
+
+movendoToken=false;
+
 };
 
 };
