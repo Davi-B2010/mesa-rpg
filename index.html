@@ -255,7 +255,7 @@ z-index:999;
 
 </div>
 
-<!-- MESA -->
+<!-- MAPA -->
 
 <div class="mesa">
 
@@ -287,7 +287,7 @@ z-index:999;
 
 const client = supabase.createClient(
 "https://nbgnxxqmpuzucmctxejk.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NzgwMiIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
 );
 
 let nick;
@@ -375,7 +375,8 @@ await client
 .from("salas")
 .insert({
 nome:sala,
-mestre:nick
+mestre:nick,
+players:[]
 });
 
 abrirMesa();
@@ -404,14 +405,22 @@ return;
 
 isMestre=false;
 
-/* REGISTRAR PLAYER */
+/* ADICIONAR PLAYER NA LISTA */
+
+let lista=data.players || [];
+
+if(!lista.includes(nick)){
+
+lista.push(nick);
 
 await client
-.from("players")
-.insert({
-sala:sala,
-nick:nick
-});
+.from("salas")
+.update({
+players:lista
+})
+.eq("nome",sala);
+
+}
 
 abrirMesa();
 
@@ -453,12 +462,8 @@ setInterval(carregarPlayers,2000);
 
 }else{
 
-/* PLAYER NÃO VÊ DADOS */
-
 document.getElementById("dadosArea")
 .style.display="none";
-
-/* PLAYER NÃO VÊ UPLOAD */
 
 document.getElementById("botaoMapa")
 .style.display="none";
@@ -479,24 +484,25 @@ setInterval(carregarMapa,2000);
 
 async function carregarPlayers(){
 
-const {data,error}=await client
-.from("players")
+const {data}=await client
+.from("salas")
 .select("*")
-.eq("sala",sala);
+.eq("nome",sala)
+.single();
 
-if(error)return;
+const listaDiv=document.getElementById("listaPlayers");
 
-const lista=document.getElementById("listaPlayers");
+if(!listaDiv)return;
 
-if(!lista)return;
+listaDiv.innerHTML="";
 
-lista.innerHTML="";
+const players=data.players || [];
 
-data.forEach(player=>{
+players.forEach(player=>{
 
-lista.innerHTML += `
+listaDiv.innerHTML += `
 <div class="player">
-${player.nick}
+${player}
 </div>
 `;
 
@@ -617,8 +623,6 @@ el.style.top=token.y+"px";
 el.innerText=token.dono[0];
 
 mapaBox.appendChild(el);
-
-/* TODOS PLAYERS PODEM MOVER */
 
 let dragging=false;
 
