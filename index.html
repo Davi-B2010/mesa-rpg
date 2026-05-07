@@ -2,11 +2,14 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Shadow Slave - "Deuses e Daemons entre nós"</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Shadow Slave - Deuses e Daemons entre nós</title>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
 <style>
+
 body{
 margin:0;
 background:black;
@@ -14,6 +17,8 @@ color:red;
 font-family:Segoe UI;
 overflow:hidden;
 }
+
+/* TELAS */
 
 .tela{
 display:none;
@@ -28,6 +33,7 @@ display:flex;
 }
 
 /* LOGO */
+
 .logo-container{
 text-align:center;
 margin-bottom:30px;
@@ -55,14 +61,18 @@ letter-spacing:1px;
 }
 
 /* INPUTS */
+
 input{
 background:#111;
 border:1px solid red;
 color:red;
 padding:10px;
 margin:5px;
-width:250px;
+width:260px;
+outline:none;
 }
+
+/* BOTÕES */
 
 button{
 background:black;
@@ -72,6 +82,7 @@ padding:10px;
 margin:5px;
 cursor:pointer;
 transition:0.2s;
+font-weight:bold;
 }
 
 button:hover{
@@ -80,24 +91,29 @@ color:black;
 }
 
 /* MESA */
+
 .container{
 display:grid;
 grid-template-columns:260px 1fr;
-height:100vh;
 width:100vw;
+height:100vh;
 }
 
 .sidebar{
 background:#050505;
 border-right:2px solid red;
-padding:10px;
+padding:15px;
 overflow:auto;
 z-index:50;
 }
 
+.sidebar h3{
+margin-top:0;
+}
+
 .mesa{
 position:relative;
-background:#000;
+background:black;
 overflow:hidden;
 }
 
@@ -106,23 +122,23 @@ position:absolute;
 top:50%;
 left:50%;
 transform:translate(-50%,-50%);
-width:90%;
-height:90%;
+width:92%;
+height:92%;
 border:2px solid red;
 background:#111;
 overflow:hidden;
 }
 
 #mapaImg{
+position:absolute;
+top:0;
+left:0;
 width:100%;
 height:100%;
 object-fit:contain;
 display:none;
 pointer-events:none;
 user-select:none;
-position:absolute;
-top:0;
-left:0;
 z-index:1;
 }
 
@@ -133,23 +149,25 @@ left:50%;
 transform:translate(-50%,-50%);
 background:black;
 border:1px solid red;
-padding:15px;
+padding:20px;
 border-radius:10px;
 z-index:10;
+text-align:center;
 }
 
 /* TOKENS */
+
 .token{
-width:40px;
-height:40px;
+width:45px;
+height:45px;
 border-radius:50%;
-position:absolute;
-display:flex;
-align-items:center;
-justify-content:center;
 background:red;
 color:black;
 font-weight:bold;
+display:flex;
+align-items:center;
+justify-content:center;
+position:absolute;
 cursor:grab;
 user-select:none;
 z-index:100;
@@ -157,6 +175,7 @@ border:2px solid black;
 }
 
 /* POPUP */
+
 .popup{
 position:fixed;
 bottom:20px;
@@ -165,17 +184,19 @@ transform:translateX(-50%);
 background:black;
 border:2px solid red;
 padding:20px;
-font-size:22px;
+font-size:24px;
 border-radius:10px;
 display:none;
 z-index:999;
 }
+
 </style>
 </head>
 
 <body>
 
 <!-- LOGIN -->
+
 <div id="loginTela" class="tela ativa">
 
 <div class="logo-container">
@@ -185,11 +206,18 @@ z-index:999;
 
 <input id="nick" placeholder="Nickname">
 
+<input id="email" type="email" placeholder="Email">
+
+<input id="senha" type="password" placeholder="Senha">
+
 <button onclick="login()">Entrar</button>
+
+<button onclick="registrar()">Criar Conta</button>
 
 </div>
 
 <!-- MENU -->
+
 <div id="menuTela" class="tela">
 
 <div class="logo-container">
@@ -206,11 +234,13 @@ z-index:999;
 </div>
 
 <!-- MESA -->
+
 <div id="mesaTela" class="tela">
 
 <div class="container">
 
 <!-- SIDEBAR -->
+
 <div class="sidebar">
 
 <h3>🎲 Dados</h3>
@@ -235,6 +265,7 @@ z-index:999;
 </div>
 
 <!-- MESA -->
+
 <div class="mesa">
 
 <div id="mapaBox" class="mapa-box">
@@ -242,8 +273,11 @@ z-index:999;
 <img id="mapaImg">
 
 <div id="botaoMapa" class="overlay">
+
 <input type="file" id="mapaUpload" accept="image/*">
+
 <p>Enviar mapa</p>
+
 </div>
 
 </div>
@@ -255,9 +289,11 @@ z-index:999;
 </div>
 
 <!-- POPUP -->
+
 <div id="popup" class="popup"></div>
 
 <script>
+
 const client = supabase.createClient(
 "https://nbgnxxqmpuzucmctxejk.supabase.co",
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
@@ -267,7 +303,8 @@ let nick;
 let sala;
 let isMestre=false;
 
-// TELAS
+/* TELAS */
+
 function mostrar(id){
 
 document.querySelectorAll(".tela")
@@ -278,21 +315,76 @@ document.getElementById(id)
 
 }
 
-// LOGIN
-function login(){
+/* REGISTRAR */
+
+async function registrar(){
+
+const email=document.getElementById("email").value;
+
+const senha=document.getElementById("senha").value;
+
+if(!email || !senha){
+
+alert("Preencha email e senha");
+
+return;
+
+}
+
+const {error}=await client.auth.signUp({
+email:email,
+password:senha
+});
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+alert("Conta criada com sucesso");
+
+}
+
+/* LOGIN */
+
+async function login(){
 
 nick=document.getElementById("nick").value;
 
-if(!nick){
-alert("Digite um nickname");
+const email=document.getElementById("email").value;
+
+const senha=document.getElementById("senha").value;
+
+if(!nick || !email || !senha){
+
+alert("Preencha todos os campos");
+
 return;
+
+}
+
+const {error}=await client.auth.signInWithPassword({
+email:email,
+password:senha
+});
+
+if(error){
+
+alert(error.message);
+
+return;
+
 }
 
 mostrar("menuTela");
 
 }
 
-// GERAR CÓDIGO
+/* GERAR CÓDIGO */
+
 function gerarCodigo(){
 
 return Math.random()
@@ -302,13 +394,16 @@ return Math.random()
 
 }
 
-// CRIAR SALA
+/* CRIAR SALA */
+
 async function criarSala(){
 
 sala=gerarCodigo();
+
 isMestre=true;
 
-await client.from("salas")
+await client
+.from("salas")
 .insert({
 nome:sala,
 mestre:nick
@@ -318,7 +413,8 @@ abrirMesa();
 
 }
 
-// ENTRAR SALA
+/* ENTRAR SALA */
+
 async function entrarSala(){
 
 sala=document.getElementById("codigoSala").value;
@@ -330,8 +426,11 @@ const {data,error}=await client
 .single();
 
 if(error || !data){
+
 alert("Sala não encontrada");
+
 return;
+
 }
 
 isMestre=false;
@@ -340,7 +439,8 @@ abrirMesa();
 
 }
 
-// ABRIR MESA
+/* ABRIR MESA */
+
 function abrirMesa(){
 
 mostrar("mesaTela");
@@ -348,25 +448,25 @@ mostrar("mesaTela");
 document.getElementById("codigoMostrado")
 .innerHTML=`Código da sala:<br><b>${sala}</b>`;
 
-if(!isMestre){
-
-document.getElementById("botaoMapa")
-.style.display="none";
-
-}else{
+if(isMestre){
 
 document.getElementById("areaMestre")
 .innerHTML=`
 
 <h3>👑 Mestre</h3>
 
-<input id="nomeToken" placeholder="Nome Token">
+<input id="nomeToken" placeholder="Nome do Token">
 
 <button onclick="criarToken()">
 Criar Token
 </button>
 
 `;
+
+}else{
+
+document.getElementById("botaoMapa")
+.style.display="none";
 
 }
 
@@ -381,7 +481,8 @@ setInterval(carregarTokens,1000);
 
 }
 
-// MAPA
+/* MAPA */
+
 async function uploadMapa(e){
 
 const file=e.target.files[0];
@@ -397,15 +498,19 @@ const {error}=await client.storage
 .upload(caminho,file,{upsert:true});
 
 if(error){
+
 alert(error.message);
+
 return;
+
 }
 
 const {data}=client.storage
 .from("mapas")
 .getPublicUrl(caminho);
 
-await client.from("arquivos")
+await client
+.from("arquivos")
 .insert({
 sala:sala,
 nome:nomeArquivo,
@@ -417,7 +522,8 @@ carregarMapa();
 
 }
 
-// CARREGAR MAPA
+/* CARREGAR MAPA */
+
 async function carregarMapa(){
 
 const {data}=await client
@@ -443,14 +549,16 @@ document.getElementById("botaoMapa")
 
 }
 
-// CRIAR TOKEN
+/* TOKEN */
+
 async function criarToken(){
 
 const nome=document.getElementById("nomeToken").value;
 
 if(!nome)return;
 
-await client.from("tokens")
+await client
+.from("tokens")
 .insert({
 sala:sala,
 dono:nome,
@@ -462,7 +570,8 @@ carregarTokens();
 
 }
 
-// CARREGAR TOKENS
+/* CARREGAR TOKENS */
+
 async function carregarTokens(){
 
 const {data}=await client
@@ -486,15 +595,14 @@ el.innerText=token.dono[0];
 
 mapaBox.appendChild(el);
 
-// DRAG
 if(isMestre || token.dono===nick){
 
 let dragging=false;
 
 el.onmousedown=(e)=>{
 
-e.stopPropagation();
 e.preventDefault();
+e.stopPropagation();
 
 dragging=true;
 
@@ -541,14 +649,16 @@ document.removeEventListener("mousemove",mover);
 
 }
 
-// DADOS
+/* DADOS */
+
 async function rolar(max){
 
 const valor=Math.floor(Math.random()*max)+1;
 
 mostrarDado("D"+max+" → "+valor);
 
-await client.from("dados")
+await client
+.from("dados")
 .insert({
 sala:sala,
 valor:valor,
@@ -557,7 +667,8 @@ tipo:"D"+max
 
 }
 
-// POPUP
+/* POPUP */
+
 function mostrarDado(texto){
 
 const popup=document.getElementById("popup");
@@ -569,10 +680,13 @@ popup.style.display="block";
 clearTimeout(window.popupTimer);
 
 window.popupTimer=setTimeout(()=>{
+
 popup.style.display="none";
+
 },10000);
 
 }
+
 </script>
 
 </body>
