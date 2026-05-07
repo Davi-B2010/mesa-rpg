@@ -97,10 +97,6 @@ overflow:auto;
 z-index:50;
 }
 
-.sidebar h3{
-margin-top:0;
-}
-
 .player{
 padding:6px;
 border-bottom:1px solid #222;
@@ -165,7 +161,6 @@ cursor:grab;
 user-select:none;
 z-index:100;
 border:2px solid black;
-transition:none;
 }
 
 .popup{
@@ -235,6 +230,8 @@ z-index:999;
 
 <div class="sidebar">
 
+<div id="dadosArea">
+
 <h3>🎲 Dados</h3>
 
 <button onclick="rolar(20)">D20</button>
@@ -245,6 +242,8 @@ z-index:999;
 <button onclick="rolar(4)">D4</button>
 
 <hr>
+
+</div>
 
 <h3>📜 Sala</h3>
 
@@ -307,7 +306,7 @@ document.getElementById(id)
 
 }
 
-/* REGISTRO */
+/* REGISTRAR */
 
 async function registrar(){
 
@@ -353,7 +352,7 @@ mostrar("menuTela");
 
 }
 
-/* GERAR CÓDIGO */
+/* CÓDIGO */
 
 function gerarCodigo(){
 
@@ -405,7 +404,7 @@ return;
 
 isMestre=false;
 
-/* SALVAR PLAYER */
+/* REGISTRAR PLAYER */
 
 await client
 .from("players")
@@ -454,6 +453,13 @@ setInterval(carregarPlayers,2000);
 
 }else{
 
+/* PLAYER NÃO VÊ DADOS */
+
+document.getElementById("dadosArea")
+.style.display="none";
+
+/* PLAYER NÃO VÊ UPLOAD */
+
 document.getElementById("botaoMapa")
 .style.display="none";
 
@@ -473,10 +479,12 @@ setInterval(carregarMapa,2000);
 
 async function carregarPlayers(){
 
-const {data}=await client
+const {data,error}=await client
 .from("players")
 .select("*")
 .eq("sala",sala);
+
+if(error)return;
 
 const lista=document.getElementById("listaPlayers");
 
@@ -486,7 +494,7 @@ lista.innerHTML="";
 
 data.forEach(player=>{
 
-lista.innerHTML+=`
+lista.innerHTML += `
 <div class="player">
 ${player.nick}
 </div>
@@ -537,7 +545,7 @@ carregarMapa();
 
 }
 
-/* MAPA */
+/* CARREGAR MAPA */
 
 async function carregarMapa(){
 
@@ -569,6 +577,8 @@ document.getElementById("botaoMapa")
 async function criarToken(){
 
 const nome=document.getElementById("nomeToken").value;
+
+if(!nome)return;
 
 await client
 .from("tokens")
@@ -608,9 +618,7 @@ el.innerText=token.dono[0];
 
 mapaBox.appendChild(el);
 
-/* SOMENTE PLAYER DONO OU MESTRE */
-
-if(isMestre || token.dono===nick){
+/* TODOS PLAYERS PODEM MOVER */
 
 let dragging=false;
 
@@ -661,8 +669,6 @@ document.removeEventListener("mousemove",mover);
 
 });
 
-}
-
 });
 
 clearTimeout(window.tokenReload);
@@ -676,6 +682,8 @@ carregarTokens();
 /* DADOS */
 
 async function rolar(max){
+
+if(!isMestre)return;
 
 const valor=Math.floor(Math.random()*max)+1;
 
@@ -694,6 +702,8 @@ tipo:"D"+max
 /* POPUP */
 
 function mostrarDado(texto){
+
+if(!isMestre)return;
 
 const popup=document.getElementById("popup");
 
