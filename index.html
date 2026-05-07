@@ -279,15 +279,23 @@ z-index:999;
 
 </div>
 
-<!-- POPUP -->
-
 <div id="popup" class="popup"></div>
 
 <script>
 
+/* =========================================
+SUPABASE
+========================================= */
+
+const SUPABASE_URL =
+"https://nbgnxxqmpuzucmctxejk.supabase.co";
+
+const SUPABASE_ANON_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1Nzc4MDIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo";
+
 const client = supabase.createClient(
-"https://nbgnxxqmpuzucmctxejk.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iZ254eHFtcHV6dWNtY3R4ZWprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NzgwMiIsImV4cCI6MjA5MzE1MzgwMn0.ZtFES_d4gu7Tum9MwQrZtaXUPLr8jDdjq1zmenxbwzo"
+SUPABASE_URL,
+SUPABASE_ANON_KEY
 );
 
 let nick;
@@ -320,8 +328,11 @@ password:senha
 });
 
 if(error){
+
 alert(error.message);
+
 return;
+
 }
 
 alert("Conta criada");
@@ -344,15 +355,18 @@ password:senha
 });
 
 if(error){
+
 alert(error.message);
+
 return;
+
 }
 
 mostrar("menuTela");
 
 }
 
-/* CÓDIGO */
+/* GERAR CÓDIGO */
 
 function gerarCodigo(){
 
@@ -383,7 +397,7 @@ abrirMesa();
 
 }
 
-/* ENTRAR SALA */
+/* ENTRAR */
 
 async function entrarSala(){
 
@@ -404,8 +418,6 @@ return;
 }
 
 isMestre=false;
-
-/* ADICIONAR PLAYER NA LISTA */
 
 let lista=data.players || [];
 
@@ -551,7 +563,7 @@ carregarMapa();
 
 }
 
-/* CARREGAR MAPA */
+/* MAPA */
 
 async function carregarMapa(){
 
@@ -632,7 +644,6 @@ let currentY=token.y;
 el.addEventListener("mousedown",(e)=>{
 
 e.preventDefault();
-e.stopPropagation();
 
 dragging=true;
 
@@ -692,14 +703,6 @@ if(!isMestre)return;
 const valor=Math.floor(Math.random()*max)+1;
 
 mostrarDado("D"+max+" → "+valor);
-
-await client
-.from("dados")
-.insert({
-sala:sala,
-valor:valor,
-tipo:"D"+max
-});
 
 }
 
