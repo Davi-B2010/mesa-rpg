@@ -401,7 +401,19 @@ abrirMesa();
 
 async function entrarSala(){
 
-sala=document.getElementById("codigoSala").value;
+sala=document
+.getElementById("codigoSala")
+.value
+.trim()
+.toUpperCase();
+
+if(!sala){
+
+alert("Digite o código da sala");
+
+return;
+
+}
 
 const {data,error}=await client
 .from("salas")
@@ -413,11 +425,15 @@ if(error || !data){
 
 alert("Sala não encontrada");
 
+console.log(error);
+
 return;
 
 }
 
 isMestre=false;
+
+/* PLAYER ENTRA NA LISTA */
 
 let lista=data.players || [];
 
@@ -425,14 +441,22 @@ if(!lista.includes(nick)){
 
 lista.push(nick);
 
-await client
+const {error:updateError}=await client
 .from("salas")
 .update({
 players:lista
 })
 .eq("nome",sala);
 
+if(updateError){
+
+console.log(updateError);
+
 }
+
+}
+
+/* ABRIR */
 
 abrirMesa();
 
