@@ -92,10 +92,7 @@ background:#050505;
 border-right:2px solid red;
 padding:10px;
 overflow:auto;
-}
-
-.sidebar h3{
-color:red;
+z-index:50;
 }
 
 .mesa{
@@ -121,6 +118,12 @@ width:100%;
 height:100%;
 object-fit:contain;
 display:none;
+pointer-events:none;
+user-select:none;
+position:absolute;
+top:0;
+left:0;
+z-index:1;
 }
 
 .overlay{
@@ -135,7 +138,7 @@ border-radius:10px;
 z-index:10;
 }
 
-/* TOKEN */
+/* TOKENS */
 .token{
 width:40px;
 height:40px;
@@ -149,7 +152,8 @@ color:black;
 font-weight:bold;
 cursor:grab;
 user-select:none;
-z-index:20;
+z-index:100;
+border:2px solid black;
 }
 
 /* POPUP */
@@ -180,8 +184,6 @@ z-index:999;
 </div>
 
 <input id="nick" placeholder="Nickname">
-<input id="email" placeholder="Email">
-<input id="senha" type="password" placeholder="Senha">
 
 <button onclick="login()">Entrar</button>
 
@@ -265,13 +267,15 @@ let nick;
 let sala;
 let isMestre=false;
 
-// TROCAR TELA
+// TELAS
 function mostrar(id){
+
 document.querySelectorAll(".tela")
 .forEach(t=>t.classList.remove("ativa"));
 
 document.getElementById(id)
 .classList.add("ativa");
+
 }
 
 // LOGIN
@@ -285,13 +289,17 @@ return;
 }
 
 mostrar("menuTela");
+
 }
 
 // GERAR CÓDIGO
 function gerarCodigo(){
-return Math.random().toString(36)
+
+return Math.random()
+.toString(36)
 .substring(2,8)
 .toUpperCase();
+
 }
 
 // CRIAR SALA
@@ -300,12 +308,14 @@ async function criarSala(){
 sala=gerarCodigo();
 isMestre=true;
 
-await client.from("salas").insert({
+await client.from("salas")
+.insert({
 nome:sala,
 mestre:nick
 });
 
 abrirMesa();
+
 }
 
 // ENTRAR SALA
@@ -327,6 +337,7 @@ return;
 isMestre=false;
 
 abrirMesa();
+
 }
 
 // ABRIR MESA
@@ -365,8 +376,9 @@ document.getElementById("mapaUpload")
 carregarMapa();
 carregarTokens();
 
-setInterval(carregarTokens,1000);
 setInterval(carregarMapa,2000);
+setInterval(carregarTokens,1000);
+
 }
 
 // MAPA
@@ -402,6 +414,7 @@ tipo:"mapa"
 });
 
 carregarMapa();
+
 }
 
 // CARREGAR MAPA
@@ -420,12 +433,14 @@ if(data && data[0]){
 const img=document.getElementById("mapaImg");
 
 img.src=data[0].url+"?"+Date.now();
+
 img.style.display="block";
 
 document.getElementById("botaoMapa")
 .style.display="none";
 
 }
+
 }
 
 // CRIAR TOKEN
@@ -444,6 +459,7 @@ y:100
 });
 
 carregarTokens();
+
 }
 
 // CARREGAR TOKENS
@@ -468,30 +484,31 @@ el.style.top=token.y+"px";
 
 el.innerText=token.dono[0];
 
-el.dataset.id=token.id;
-
 mapaBox.appendChild(el);
 
-// MOVER TOKEN
+// DRAG
 if(isMestre || token.dono===nick){
 
-let segurando=false;
+let dragging=false;
 
-el.addEventListener("mousedown",(ev)=>{
+el.onmousedown=(e)=>{
 
-segurando=true;
+e.stopPropagation();
+e.preventDefault();
+
+dragging=true;
 
 const rect=mapaBox.getBoundingClientRect();
 
-const offsetX=ev.clientX-el.offsetLeft;
-const offsetY=ev.clientY-el.offsetTop;
+const shiftX=e.clientX-el.getBoundingClientRect().left;
+const shiftY=e.clientY-el.getBoundingClientRect().top;
 
-function mover(e){
+function mover(ev){
 
-if(!segurando)return;
+if(!dragging)return;
 
-let x=e.clientX-rect.left-offsetX;
-let y=e.clientY-rect.top-offsetY;
+let x=ev.clientX-rect.left-shiftX;
+let y=ev.clientY-rect.top-shiftY;
 
 el.style.left=x+"px";
 el.style.top=y+"px";
@@ -502,9 +519,7 @@ document.addEventListener("mousemove",mover);
 
 document.addEventListener("mouseup",async()=>{
 
-if(segurando){
-
-segurando=false;
+dragging=false;
 
 const x=parseInt(el.style.left);
 const y=parseInt(el.style.top);
@@ -514,17 +529,16 @@ await client
 .update({x,y})
 .eq("id",token.id);
 
-}
-
 document.removeEventListener("mousemove",mover);
 
 },{once:true});
 
-});
+};
 
 }
 
 });
+
 }
 
 // DADOS
@@ -540,6 +554,7 @@ sala:sala,
 valor:valor,
 tipo:"D"+max
 });
+
 }
 
 // POPUP
@@ -556,6 +571,7 @@ clearTimeout(window.popupTimer);
 window.popupTimer=setTimeout(()=>{
 popup.style.display="none";
 },10000);
+
 }
 </script>
 
