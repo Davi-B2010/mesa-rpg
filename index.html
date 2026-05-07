@@ -303,7 +303,6 @@ const client = supabase.createClient(
 let nick;
 let sala;
 let isMestre=false;
-let tokenSendoMovido=null;
 
 /* TELAS */
 
@@ -325,28 +324,17 @@ const email=document.getElementById("email").value;
 
 const senha=document.getElementById("senha").value;
 
-if(!email || !senha){
-
-alert("Preencha email e senha");
-
-return;
-
-}
-
 const {error}=await client.auth.signUp({
-email:email,
+email,
 password:senha
 });
 
 if(error){
-
 alert(error.message);
-
 return;
-
 }
 
-alert("Conta criada com sucesso");
+alert("Conta criada");
 
 }
 
@@ -360,25 +348,14 @@ const email=document.getElementById("email").value;
 
 const senha=document.getElementById("senha").value;
 
-if(!nick || !email || !senha){
-
-alert("Preencha todos os campos");
-
-return;
-
-}
-
 const {error}=await client.auth.signInWithPassword({
-email:email,
+email,
 password:senha
 });
 
 if(error){
-
 alert(error.message);
-
 return;
-
 }
 
 mostrar("menuTela");
@@ -415,7 +392,7 @@ abrirMesa();
 
 }
 
-/* ENTRAR */
+/* ENTRAR SALA */
 
 async function entrarSala(){
 
@@ -441,7 +418,7 @@ abrirMesa();
 
 }
 
-/* MESA */
+/* ABRIR */
 
 function abrirMesa(){
 
@@ -479,7 +456,6 @@ carregarMapa();
 carregarTokens();
 
 setInterval(carregarMapa,2000);
-setInterval(carregarTokens,1000);
 
 }
 
@@ -557,8 +533,6 @@ async function criarToken(){
 
 const nome=document.getElementById("nomeToken").value;
 
-if(!nome)return;
-
 await client
 .from("tokens")
 .insert({
@@ -575,8 +549,6 @@ carregarTokens();
 /* TOKENS */
 
 async function carregarTokens(){
-
-if(tokenSendoMovido) return;
 
 const {data}=await client
 .from("tokens")
@@ -605,28 +577,30 @@ if(isMestre || token.dono===nick){
 
 let dragging=false;
 
+let currentX=token.x;
+let currentY=token.y;
+
 el.addEventListener("mousedown",(e)=>{
 
 e.preventDefault();
 e.stopPropagation();
 
 dragging=true;
-tokenSendoMovido=token.id;
 
 const rect=mapaBox.getBoundingClientRect();
 
-const shiftX=e.clientX-el.offsetLeft;
-const shiftY=e.clientY-el.offsetTop;
+const offsetX=e.clientX-el.getBoundingClientRect().left;
+const offsetY=e.clientY-el.getBoundingClientRect().top;
 
 function mover(ev){
 
 if(!dragging)return;
 
-let x=ev.clientX-rect.left-shiftX;
-let y=ev.clientY-rect.top-shiftY;
+currentX=ev.clientX-rect.left-offsetX;
+currentY=ev.clientY-rect.top-offsetY;
 
-el.style.left=x+"px";
-el.style.top=y+"px";
+el.style.left=currentX+"px";
+el.style.top=currentY+"px";
 
 }
 
@@ -636,17 +610,20 @@ document.addEventListener("mouseup",async()=>{
 
 dragging=false;
 
-const x=parseInt(el.style.left);
-const y=parseInt(el.style.top);
-
 await client
 .from("tokens")
-.update({x,y})
+.update({
+x:currentX,
+y:currentY
+})
 .eq("id",token.id);
 
-tokenSendoMovido=null;
-
 document.removeEventListener("mousemove",mover);
+
+/* recarrega após mover */
+setTimeout(()=>{
+carregarTokens();
+},100);
 
 },{once:true});
 
@@ -655,6 +632,13 @@ document.removeEventListener("mousemove",mover);
 }
 
 });
+
+/* NÃO recarregar enquanto move */
+clearTimeout(window.tokenReload);
+
+window.tokenReload=setTimeout(()=>{
+carregarTokens();
+},1500);
 
 }
 
