@@ -18,8 +18,6 @@ font-family:Segoe UI;
 overflow:hidden;
 }
 
-/* TELAS */
-
 .tela{
 display:none;
 height:100vh;
@@ -31,8 +29,6 @@ flex-direction:column;
 .ativa{
 display:flex;
 }
-
-/* LOGO */
 
 .logo-container{
 text-align:center;
@@ -60,8 +56,6 @@ color:#9b9b9b;
 letter-spacing:1px;
 }
 
-/* INPUTS */
-
 input{
 background:#111;
 border:1px solid red;
@@ -71,8 +65,6 @@ margin:5px;
 width:260px;
 outline:none;
 }
-
-/* BOTÕES */
 
 button{
 background:black;
@@ -89,8 +81,6 @@ button:hover{
 background:red;
 color:black;
 }
-
-/* MESA */
 
 .container{
 display:grid;
@@ -109,6 +99,11 @@ z-index:50;
 
 .sidebar h3{
 margin-top:0;
+}
+
+.player{
+padding:6px;
+border-bottom:1px solid #222;
 }
 
 .mesa{
@@ -155,8 +150,6 @@ z-index:10;
 text-align:center;
 }
 
-/* TOKENS */
-
 .token{
 width:45px;
 height:45px;
@@ -174,8 +167,6 @@ z-index:100;
 border:2px solid black;
 transition:none;
 }
-
-/* POPUP */
 
 .popup{
 position:fixed;
@@ -316,7 +307,7 @@ document.getElementById(id)
 
 }
 
-/* REGISTRAR */
+/* REGISTRO */
 
 async function registrar(){
 
@@ -362,7 +353,7 @@ mostrar("menuTela");
 
 }
 
-/* CÓDIGO */
+/* GERAR CÓDIGO */
 
 function gerarCodigo(){
 
@@ -414,11 +405,20 @@ return;
 
 isMestre=false;
 
+/* SALVAR PLAYER */
+
+await client
+.from("players")
+.insert({
+sala:sala,
+nick:nick
+});
+
 abrirMesa();
 
 }
 
-/* ABRIR */
+/* ABRIR MESA */
 
 function abrirMesa(){
 
@@ -440,7 +440,17 @@ document.getElementById("areaMestre")
 Criar Token
 </button>
 
+<hr>
+
+<h3>👥 Players</h3>
+
+<div id="listaPlayers"></div>
+
 `;
+
+carregarPlayers();
+
+setInterval(carregarPlayers,2000);
 
 }else{
 
@@ -456,6 +466,33 @@ carregarMapa();
 carregarTokens();
 
 setInterval(carregarMapa,2000);
+
+}
+
+/* PLAYERS */
+
+async function carregarPlayers(){
+
+const {data}=await client
+.from("players")
+.select("*")
+.eq("sala",sala);
+
+const lista=document.getElementById("listaPlayers");
+
+if(!lista)return;
+
+lista.innerHTML="";
+
+data.forEach(player=>{
+
+lista.innerHTML+=`
+<div class="player">
+${player.nick}
+</div>
+`;
+
+});
 
 }
 
@@ -500,7 +537,7 @@ carregarMapa();
 
 }
 
-/* CARREGAR MAPA */
+/* MAPA */
 
 async function carregarMapa(){
 
@@ -571,7 +608,7 @@ el.innerText=token.dono[0];
 
 mapaBox.appendChild(el);
 
-/* DRAG */
+/* SOMENTE PLAYER DONO OU MESTRE */
 
 if(isMestre || token.dono===nick){
 
@@ -620,11 +657,6 @@ y:currentY
 
 document.removeEventListener("mousemove",mover);
 
-/* recarrega após mover */
-setTimeout(()=>{
-carregarTokens();
-},100);
-
 },{once:true});
 
 });
@@ -633,7 +665,6 @@ carregarTokens();
 
 });
 
-/* NÃO recarregar enquanto move */
 clearTimeout(window.tokenReload);
 
 window.tokenReload=setTimeout(()=>{
