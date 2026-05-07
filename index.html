@@ -172,6 +172,7 @@ cursor:grab;
 user-select:none;
 z-index:100;
 border:2px solid black;
+transition:none;
 }
 
 /* POPUP */
@@ -302,6 +303,7 @@ const client = supabase.createClient(
 let nick;
 let sala;
 let isMestre=false;
+let tokenSendoMovido=null;
 
 /* TELAS */
 
@@ -383,7 +385,7 @@ mostrar("menuTela");
 
 }
 
-/* GERAR CÓDIGO */
+/* CÓDIGO */
 
 function gerarCodigo(){
 
@@ -413,7 +415,7 @@ abrirMesa();
 
 }
 
-/* ENTRAR SALA */
+/* ENTRAR */
 
 async function entrarSala(){
 
@@ -439,7 +441,7 @@ abrirMesa();
 
 }
 
-/* ABRIR MESA */
+/* MESA */
 
 function abrirMesa(){
 
@@ -570,9 +572,11 @@ carregarTokens();
 
 }
 
-/* CARREGAR TOKENS */
+/* TOKENS */
 
 async function carregarTokens(){
+
+if(tokenSendoMovido) return;
 
 const {data}=await client
 .from("tokens")
@@ -595,21 +599,24 @@ el.innerText=token.dono[0];
 
 mapaBox.appendChild(el);
 
+/* DRAG */
+
 if(isMestre || token.dono===nick){
 
 let dragging=false;
 
-el.onmousedown=(e)=>{
+el.addEventListener("mousedown",(e)=>{
 
 e.preventDefault();
 e.stopPropagation();
 
 dragging=true;
+tokenSendoMovido=token.id;
 
 const rect=mapaBox.getBoundingClientRect();
 
-const shiftX=e.clientX-el.getBoundingClientRect().left;
-const shiftY=e.clientY-el.getBoundingClientRect().top;
+const shiftX=e.clientX-el.offsetLeft;
+const shiftY=e.clientY-el.offsetTop;
 
 function mover(ev){
 
@@ -637,11 +644,13 @@ await client
 .update({x,y})
 .eq("id",token.id);
 
+tokenSendoMovido=null;
+
 document.removeEventListener("mousemove",mover);
 
 },{once:true});
 
-};
+});
 
 }
 
